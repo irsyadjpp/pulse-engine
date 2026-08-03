@@ -1,0 +1,163 @@
+# ============================================================================
+# Pulse Engine — apps/orchestrator (Spring Boot)
+# ============================================================================
+# This module can be developed & released independently, so it carries its
+# own complete .gitignore in addition to the repository root one.
+
+# ----------------------------------------------------------------------------
+# Build output
+# ----------------------------------------------------------------------------
+target/
+build/
+classes/
+out/
+*.class
+*.jar
+*.war
+*.ear
+*.nar
+
+# Maven
+pom.xml.tag
+pom.xml.releaseBackup
+pom.xml.versionsBackup
+pom.xml.next
+release.properties
+dependency-reduced-pom.xml
+.flattened-pom.xml
+.mvn/timing.properties
+.mvn/wrapper/maven-wrapper.jar
+# Keep the wrapper scripts themselves versioned
+!mvnw
+!mvnw.cmd
+
+# ----------------------------------------------------------------------------
+# Spring Boot
+# ----------------------------------------------------------------------------
+.springBeans
+spring-boot-*.log
+
+# ----------------------------------------------------------------------------
+# Logs
+# ----------------------------------------------------------------------------
+*.log
+logs/
+**/logs/
+
+# ----------------------------------------------------------------------------
+# Local databases & state directories
+# ----------------------------------------------------------------------------
+pgdata/
+postgres-data/
+*.h2.db
+*.mv.db
+*.db
+*.sqlite
+kafka-logs/
+zookeeper-data/
+data/
+
+# ----------------------------------------------------------------------------
+# Secrets & environment files
+# ----------------------------------------------------------------------------
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+*.jks
+*.keystore
+*.crt
+*.cer
+*.p8
+secrets/
+.certs/
+
+# ----------------------------------------------------------------------------
+# Local / profile-specific configuration
+# ----------------------------------------------------------------------------
+application-local.*
+application-dev.local.*
+*.local.yml
+*.local.yaml
+*.local.properties
+config/local/
+
+# ----------------------------------------------------------------------------
+# Test output
+# ----------------------------------------------------------------------------
+surefire-reports/
+jacoco.exec
+coverage/
+test-results/
+
+# ----------------------------------------------------------------------------
+# IDEs & Editors
+# ----------------------------------------------------------------------------
+# IntelliJ IDEA
+.idea/
+.idea/*
+*.ipr
+*.iws
+*.iml
+
+# Eclipse
+.project
+.classpath
+.settings/
+bin/
+
+# NetBeans
+nbproject/
+nb-configuration.xml
+nbactions.xml
+
+# Visual Studio Code
+.vscode/
+*.code-workspace
+.factorypath
+
+# Vim
+*.swp
+*.swo
+*~
+
+# Emacs
+*#
+.#*
+
+# ----------------------------------------------------------------------------
+# Operating systems
+# ----------------------------------------------------------------------------
+# macOS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+*.lnk
+
+# Linux
+*~
+
+# ----------------------------------------------------------------------------
+# Patch / diff artifacts
+# ----------------------------------------------------------------------------
+*.orig
+*.rej
+*.patch
+*.diff
+
+# ----------------------------------------------------------------------------
+# Misc
+# ----------------------------------------------------------------------------
+*.tmp
+*.bak

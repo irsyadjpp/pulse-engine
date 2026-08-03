@@ -1,0 +1,249 @@
+# ============================================================================
+# Pulse Engine — Development Infrastructure (host-based dev)
+# ============================================================================
+# Start only the infrastructure + WireMock mocks so apps run on the host
+# (e.g. `mvn quarkus:dev` or IntelliJ). Match the root docker-compose.yml
+# ports so the two files are interchangeable — run only ONE at a time.
+#
+#   docker compose -f docker/docker-compose.yml up -d
+#
+# Host access:  Kafka  localhost:7000 | PostgreSQL localhost:7002 | Mocks 7010-7017
+# Container access: kafka:9092, postgres:5432, <mock>:8080
+# ============================================================================
+
+services:
+  # ---------------------------------------------------------------------------
+  # Zookeeper (required by Kafka)
+  # ---------------------------------------------------------------------------
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.5.0
+    container_name: pulse-zookeeper
+    ports:
+      - "7001:2181"
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    volumes:
+      - zookeeper-data:/var/lib/zookeeper/data
+    networks:
+      - pulse-network
+
+  # ---------------------------------------------------------------------------
+  # Kafka (dual listeners: container kafka:9092 + host localhost:7000)
+  # ---------------------------------------------------------------------------
+  kafka:
+    image: confluentinc/cp-kafka:7.5.0
+    container_name: pulse-kafka
+    depends_on:
+      - zookeeper
+    ports:
+      - "7000:7000"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,PLAINTEXT_HOST://0.0.0.0:7000
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:7000
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+    volumes:
+      - kafka-data:/var/lib/kafka/data
+    networks:
+      - pulse-network
+
+  # ---------------------------------------------------------------------------
+  # Kafka UI
+  # ---------------------------------------------------------------------------
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    container_name: pulse-kafka-ui
+    depends_on:
+      - kafka
+    ports:
+      - "8090:8080"
+    environment:
+      KAFKA_CLUSTERS_0_NAME: pulse-cluster
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9092
+      KAFKA_CLUSTERS_0_ZOOKEEPER: zookeeper:2181
+    networks:
+      - pulse-network
+
+  # ---------------------------------------------------------------------------
+  # PostgreSQL (DB pulse, schemas created by init.sql)
+  # ---------------------------------------------------------------------------
+  postgres:
+    image: postgres:17-alpine
+    container_name: pulse-postgres
+    ports:
+      - "7002:5432"
+    environment:
+      POSTGRES_DB: pulse
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d pulse"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - pulse-network
+
+  # ---------------------------------------------------------------------------
+  # pgAdmin (optional DB management UI)
+  # ---------------------------------------------------------------------------
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: pulse-pgadmin
+    depends_on:
+      - postgres
+    ports:
+      - "5050:80"
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@pulse.local
+      PGADMIN_DEFAULT_PASSWORD: admin123
+    networks:
+      - pulse-network
+
+  # ---------------------------------------------------------------------------
+  # WireMock mock services (host 701x -> container 8080)
+  # ---------------------------------------------------------------------------
+  customer-service:
+    image: wiremock/wiremock:3.5.2-alpine
+    container_name: pulse-customer-service
+    ports:
+      - "7010:8080"
+    volumes:
+      - ../mappings:/home/wiremock/mappings
+    command: --port 8080 --global-response-templating --verbose
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/customer/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - pulse-network
+
+  dukcapil-service:
+    image: wiremock/wiremock:3.5.2-alpine
+    container_name: pulse-dukcapil-service
+    ports:
+      - "7011:8080"
+    volumes:
+      - ../mappings:/home/wiremock/mappings
+    command: --port 8080 --global-response-templating --verbose
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/dukcapil/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - pulse-network
+
+  velocity-service:
+    image: wiremock/wiremock:3.5.2-alpine
+    container_name: pulse-velocity-service
+    ports:
+      - "7012:8080"
+    volumes:
+      - ../mappings:/home/wiremock/mappings
+    command: --port 8080 --global-response-templating --verbose
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/velocity/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - pulse-network
+
+  fraud-service:
+    image: wiremock/wiremock:3.5.2-alpine
+    container_name: pulse-fraud-service
+    ports:
+      - "7013:8080"
+    volumes:
+      - ../mappings:/home/wiremock/mappings
+    command: --port 8080 --global-response-templating --verbose
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/fraud/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - pulse-network
+
+  checkout-service:
+    image: wiremock/wiremock:3.5.2-alpine
+    container_name: pulse-checkout-service
+    ports:
+      - "7014:8080"
+    volumes:
+      - ../mappings:/home/wiremock/mappings
+    command: --port 8080 --global-response-templating --verbose
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/checkout/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - pulse-network
+
+  payment-service:
+    image: wiremock/wiremock:3.5.2-alpine
+    container_name: pulse-payment-service
+    ports:
+      - "7015:8080"
+    volumes:
+      - ../mappings:/home/wiremock/mappings
+    command: --port 8080 --global-response-templating --verbose
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/payment/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - pulse-network
+
+  kyc-service:
+    image: wiremock/wiremock:3.5.2-alpine
+    container_name: pulse-kyc-service
+    ports:
+      - "7016:8080"
+    volumes:
+      - ../mappings:/home/wiremock/mappings
+    command: --port 8080 --global-response-templating --verbose
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/kyc/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - pulse-network
+
+  inventory-service:
+    image: wiremock/wiremock:3.5.2-alpine
+    container_name: pulse-inventory-service
+    ports:
+      - "7017:8080"
+    volumes:
+      - ../mappings:/home/wiremock/mappings
+    command: --port 8080 --global-response-templating --verbose
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/inventory/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - pulse-network
+
+volumes:
+  kafka-data:
+  zookeeper-data:
+  postgres-data:
+
+networks:
+  pulse-network:
+    driver: bridge

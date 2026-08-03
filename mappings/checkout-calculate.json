@@ -1,0 +1,18 @@
+{
+  "request": {
+    "method": "POST",
+    "urlPath": "/checkout/calculate"
+  },
+  "response": {
+    "status": 200,
+    "jsonBody": {
+      "checkoutId": "{{jsonPath request.body '$.checkoutId'}}",
+      "subtotal": 1000000.00,
+      "tax": 110000.00,
+      "discount": 0.00,
+      "totalAmount": 1110000.00,
+      "currency": "IDR",
+      "message": "Checkout calculation completed: Subtotal=1000000.00, Tax=110000.00, Discount=0.00, Total=1110000.00"
+    }
+  }
+}

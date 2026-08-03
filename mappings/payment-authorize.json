@@ -1,0 +1,15 @@
+{
+  "request": {
+    "method": "POST",
+    "urlPath": "/payment/authorize"
+  },
+  "response": {
+    "status": 200,
+    "jsonBody": {
+      "transactionId": "TID-{{randomValue}}",
+      "orderId": "{{jsonPath request.body '$.orderId'}}",
+      "authorized": true,
+      "message": "Payment authorized successfully"
+    }
+  }
+}

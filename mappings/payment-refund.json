@@ -1,0 +1,15 @@
+{
+  "request": {
+    "method": "POST",
+    "urlPath": "/payment/refund"
+  },
+  "response": {
+    "status": 200,
+    "jsonBody": {
+      "transactionId": "{{request.query.transactionId}}",
+      "orderId": null,
+      "authorized": true,
+      "message": "Payment refunded"
+    }
+  }
+}

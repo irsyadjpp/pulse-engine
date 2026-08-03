@@ -1,0 +1,60 @@
+{
+  "schema": "pulse-engine",
+  "version": "1.0.0",
+  "description": "Kafka topic topology for Pulse Engine - Capability Event Pipeline architecture",
+  "defaults": {
+    "replicationFactor": 1,
+    "config": {
+      "cleanup.policy": "delete",
+      "compression.type": "snappy",
+      "message.timestamp.type": "CreateTime"
+    }
+  },
+  "topics": [
+    {
+      "name": "pulse.checkout.completed.v1",
+      "partitions": 6,
+      "retentionMs": 604800000,
+      "producer": "Orchestrator",
+      "consumers": ["Engine-Observe"],
+      "messageKey": "businessKey",
+      "description": "Main entry event from Kogito BPMN after checkout process completes"
+    },
+    {
+      "name": "pulse.checkout.completed.retry",
+      "partitions": 6,
+      "retentionMs": 86400000,
+      "producer": "Engine",
+      "consumers": ["Engine-Observe"],
+      "messageKey": "businessKey",
+      "description": "Retry queue for transient failures in Observe capability (max 3 retries)"
+    },
+    {
+      "name": "pulse.checkout.completed.dlq",
+      "partitions": 1,
+      "retentionMs": 2592000000,
+      "producer": "Engine",
+      "consumers": ["Operations"],
+      "messageKey": "businessKey",
+      "description": "Dead letter queue for pulse.checkout.completed after exhausted retries"
+    },
+    {
+      "name": "pulse.insight.generated.v1",
+      "partitions": 3,
+      "retentionMs": 2592000000,
+      "producer": "Engine-Publish",
+      "consumers": ["Analytics", "Dashboard", "Notification"],
+      "messageKey": "businessKey",
+      "description": "Final insight event published by Engine after all 6 capabilities complete"
+    },
+    {
+      "name": "pulse.insight.generated.dlq",
+      "partitions": 1,
+      "retentionMs": 2592000000,
+      "producer": "Engine",
+      "consumers": ["Operations"],
+      "messageKey": "businessKey",
+      "description": "Dead letter queue for pulse.insight.generated after exhausted retries"
+    }
+  ]
+}

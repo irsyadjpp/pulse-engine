@@ -1,0 +1,15 @@
+{
+  "request": {
+    "method": "POST",
+    "urlPath": "/inventory/release"
+  },
+  "response": {
+    "status": 200,
+    "jsonBody": {
+      "reservationId": null,
+      "orderId": "{{request.query.orderId}}",
+      "reserved": true,
+      "message": "Inventory released"
+    }
+  }
+}

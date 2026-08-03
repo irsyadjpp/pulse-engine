@@ -1,0 +1,14 @@
+{
+  "request": {
+    "method": "GET",
+    "urlPathPattern": "/kyc/check/.*"
+  },
+  "response": {
+    "status": 200,
+    "jsonBody": {
+      "customerId": "{{request.path.[5]}}",
+      "riskLevel": "LOW",
+      "message": "Customer approved for checkout"
+    }
+  }
+}

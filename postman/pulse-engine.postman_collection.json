@@ -1,0 +1,1231 @@
+{
+  "info": {
+    "name": "Pulse Engine API",
+    "description": "Postman collection untuk Pulse Engine (Quarkus, port 7020) dan Pulse Orchestrator (Spring Boot, port 7021).\n\nDibuat ulang berdasarkan kode sumber aktual:\n- Orchestrator: apps/orchestrator (CheckoutResource, AsyncCheckoutResource)\n- Engine: apps/engine (InsightResource, TimelineResource, ExplanationResource, LearningResource, DashboardResource, CapabilitiesResource)\n\nSeluruh contoh request & response mengikuti bentuk DTO yang sebenarnya.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost"
+    },
+    {
+      "key": "orchestratorPort",
+      "value": "7021"
+    },
+    {
+      "key": "enginePort",
+      "value": "7020"
+    },
+    {
+      "key": "orchestratorBase",
+      "value": "http://localhost:7021"
+    },
+    {
+      "key": "engineBase",
+      "value": "http://localhost:7020"
+    },
+    {
+      "key": "processId",
+      "value": "PROC-001"
+    },
+    {
+      "key": "checkoutId",
+      "value": "CHK-001"
+    },
+    {
+      "key": "customerId",
+      "value": "CUST-001"
+    }
+  ],
+  "item": [
+    {
+      "name": "Orchestrator — Checkout API (v1)",
+      "item": [
+        {
+          "name": "Start Checkout",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"checkoutId\": \"CHK-001\",\n  \"customerId\": \"CUST-001\",\n  \"shippingAddressId\": \"ADDR-001\",\n  \"payment\": {\n    \"method\": \"CREDIT_CARD\",\n    \"bank\": \"BCA\"\n  },\n  \"items\": [\n    {\n      \"productId\": \"PROD-1001\",\n      \"quantity\": 2\n    },\n    {\n      \"productId\": \"PROD-2002\",\n      \"quantity\": 1\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{orchestratorBase}}/api/v1/checkouts",
+              "host": ["{{orchestratorBase}}"],
+              "path": ["api", "v1", "checkouts"]
+            },
+            "description": "Memulai proses checkout BPMN (Kogito). Merupakan endpoint async — mengembalikan 202 Accepted dengan processId. Body request mengikuti DTO CheckoutRequest: checkoutId, customerId, shippingAddressId, payment {method, bank}, items [{productId, quantity}]."
+          },
+          "response": [
+            {
+              "name": "202 Accepted — Checkout started",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{orchestratorBase}}/api/v1/checkouts",
+                  "host": ["{{orchestratorBase}}"],
+                  "path": ["api", "v1", "checkouts"]
+                }
+              },
+              "status": "Accepted",
+              "code": 202,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"processId\": \"PROC-001\",\n  \"checkoutId\": \"CHK-001\",\n  \"status\": \"PROCESSING\",\n  \"message\": \"Checkout process has been started.\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Get Checkout",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{orchestratorBase}}/api/v1/checkouts/{{processId}}",
+              "host": ["{{orchestratorBase}}"],
+              "path": ["api", "v1", "checkouts", "{{processId}}"]
+            },
+            "description": "Mendapatkan status lengkap proses checkout berdasarkan processId."
+          },
+          "response": [
+            {
+              "name": "200 OK — Checkout process",
+              "originalRequest": {
+                "method": "GET",
+                "url": {
+                  "raw": "{{orchestratorBase}}/api/v1/checkouts/{{processId}}",
+                  "host": ["{{orchestratorBase}}"],
+                  "path": ["api", "v1", "checkouts", "{{processId}}"]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"processId\": \"PROC-001\",\n  \"businessKey\": \"ORD-20260801-CHK-001\",\n  \"status\": \"COMPLETED\",\n  \"currentNode\": \"CompleteCheckout\",\n  \"decision\": \"APPROVE\",\n  \"startedAt\": \"2026-08-01T18:59:57.482Z\",\n  \"lastUpdated\": \"2026-08-01T19:00:04.918Z\"\n}"
+            },
+            {
+              "name": "500 — Process not found",
+              "originalRequest": {
+                "method": "GET",
+                "url": {
+                  "raw": "{{orchestratorBase}}/api/v1/checkouts/{{processId}}",
+                  "host": ["{{orchestratorBase}}"],
+                  "path": ["api", "v1", "checkouts", "{{processId}}"]
+                }
+              },
+              "status": "Internal Server Error",
+              "code": 500,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"error\": \"Internal Server Error\",\n  \"message\": \"Process not found: PROC-999\",\n  \"type\": \"RuntimeException\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Get Process Timeline",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{orchestratorBase}}/api/v1/checkouts/{{processId}}/timeline",
+              "host": ["{{orchestratorBase}}"],
+              "path": ["api", "v1", "checkouts", "{{processId}}", "timeline"]
+            },
+            "description": "Mendapatkan riwayat audit / timeline node yang dilalui proses checkout."
+          },
+          "response": [
+            {
+              "name": "200 OK — Timeline",
+              "originalRequest": {
+                "method": "GET",
+                "url": {
+                  "raw": "{{orchestratorBase}}/api/v1/checkouts/{{processId}}/timeline",
+                  "host": ["{{orchestratorBase}}"],
+                  "path": ["api", "v1", "checkouts", "{{processId}}", "timeline"]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"processId\": \"PROC-001\",\n  \"events\": [\n    {\n      \"node\": \"ValidateCheckout\",\n      \"status\": \"COMPLETED\",\n      \"time\": \"2026-08-01T18:59:57.482Z\"\n    },\n    {\n      \"node\": \"VerifyIdentity\",\n      \"status\": \"COMPLETED\",\n      \"time\": \"2026-08-01T18:59:58.011Z\"\n    },\n    {\n      \"node\": \"AssessRisk\",\n      \"status\": \"COMPLETED\",\n      \"time\": \"2026-08-01T18:59:58.524Z\"\n    },\n    {\n      \"node\": \"Payment\",\n      \"status\": \"COMPLETED\",\n      \"time\": \"2026-08-01T19:00:03.211Z\"\n    },\n    {\n      \"node\": \"CompleteCheckout\",\n      \"status\": \"COMPLETED\",\n      \"time\": \"2026-08-01T19:00:04.918Z\"\n    }\n  ]\n}"
+            }
+          ]
+        },
+        {
+          "name": "Get Decision",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{orchestratorBase}}/api/v1/checkouts/{{processId}}/decision",
+              "host": ["{{orchestratorBase}}"],
+              "path": ["api", "v1", "checkouts", "{{processId}}", "decision"]
+            },
+            "description": "Mendapatkan hasil keputusan DMN (checkout-process.dmn) untuk sebuah proses."
+          },
+          "response": [
+            {
+              "name": "200 OK — Decision",
+              "originalRequest": {
+                "method": "GET",
+                "url": {
+                  "raw": "{{orchestratorBase}}/api/v1/checkouts/{{processId}}/decision",
+                  "host": ["{{orchestratorBase}}"],
+                  "path": ["api", "v1", "checkouts", "{{processId}}", "decision"]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"decision\": \"APPROVE\",\n  \"riskLevel\": \"LOW\",\n  \"reason\": \"Transaction approved with LOW risk level.\",\n  \"dmnModel\": \"checkout-process.dmn\",\n  \"executedAt\": \"2026-08-01T18:59:57.482Z\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Retry Process",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"Payment gateway timeout, retry with fallback channel\"\n}"
+            },
+            "url": {
+              "raw": "{{orchestratorBase}}/api/v1/checkouts/{{processId}}/retry",
+              "host": ["{{orchestratorBase}}"],
+              "path": ["api", "v1", "checkouts", "{{processId}}", "retry"]
+            },
+            "description": "Mencoba ulang proses yang berstatus FAILED. Hanya proses dengan status FAILED yang dapat di-retry."
+          },
+          "response": [
+            {
+              "name": "200 OK — Retry failed (demo behavior)",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{orchestratorBase}}/api/v1/checkouts/{{processId}}/retry",
+                  "host": ["{{orchestratorBase}}"],
+                  "path": ["api", "v1", "checkouts", "{{processId}}", "retry"]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"status\": \"RETRY_FAILED\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Cancel Process",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"Customer requested cancellation\"\n}"
+            },
+            "url": {
+              "raw": "{{orchestratorBase}}/api/v1/checkouts/{{processId}}/cancel",
+              "host": ["{{orchestratorBase}}"],
+              "path": ["api", "v1", "checkouts", "{{processId}}", "cancel"]
+            },
+            "description": "Membatalkan proses yang masih berjalan. Proses COMPLETED/CANCELLED tidak dapat dibatalkan."
+          },
+          "response": [
+            {
+              "name": "200 OK — Cancelled",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{orchestratorBase}}/api/v1/checkouts/{{processId}}/cancel",
+                  "host": ["{{orchestratorBase}}"],
+                  "path": ["api", "v1", "checkouts", "{{processId}}", "cancel"]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"status\": \"CANCELLED\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "List Processes",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{orchestratorBase}}/api/v1/checkouts?status=COMPLETED&customerId=CUST-001&decision=APPROVE",
+              "host": ["{{orchestratorBase}}"],
+              "path": ["api", "v1", "checkouts"],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "COMPLETED",
+                  "description": "Filter berdasarkan status: PROCESSING / COMPLETED / FAILED / CANCELLED / RETRYING"
+                },
+                {
+                  "key": "customerId",
+                  "value": "CUST-001"
+                },
+                {
+                  "key": "decision",
+                  "value": "APPROVE"
+                }
+              ]
+            },
+            "description": "Mendaftar semua proses checkout. Mendukung filter opsional: status, customerId, decision (semua parameter optional)."
+          },
+          "response": [
+            {
+              "name": "200 OK — Process list",
+              "originalRequest": {
+                "method": "GET",
+                "url": {
+                  "raw": "{{orchestratorBase}}/api/v1/checkouts?status=COMPLETED&customerId=CUST-001",
+                  "host": ["{{orchestratorBase}}"],
+                  "path": ["api", "v1", "checkouts"],
+                  "query": [
+                    {
+                      "key": "status",
+                      "value": "COMPLETED"
+                    },
+                    {
+                      "key": "customerId",
+                      "value": "CUST-001"
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"total\": 2,\n  \"items\": [\n    {\n      \"processId\": \"PROC-001\",\n      \"status\": \"COMPLETED\",\n      \"currentNode\": \"CompleteCheckout\"\n    },\n    {\n      \"processId\": \"PROC-002\",\n      \"status\": \"COMPLETED\",\n      \"currentNode\": \"CompleteCheckout\"\n    }\n  ]\n}"
+            }
+          ]
+        },
+        {
+          "name": "Dashboard",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{orchestratorBase}}/api/v1/dashboard",
+              "host": ["{{orchestratorBase}}"],
+              "path": ["api", "v1", "dashboard"]
+            },
+            "description": "Statistik agregat seluruh proses checkout di Orchestrator."
+          },
+          "response": [
+            {
+              "name": "200 OK — Dashboard statistics",
+              "originalRequest": {
+                "method": "GET",
+                "url": {
+                  "raw": "{{orchestratorBase}}/api/v1/dashboard",
+                  "host": ["{{orchestratorBase}}"],
+                  "path": ["api", "v1", "dashboard"]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"running\": 3,\n  \"completed\": 142,\n  \"failed\": 7,\n  \"cancelled\": 2,\n  \"averageProcessingTimeMs\": 1846\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Orchestrator — Async API (v2)",
+      "item": [
+        {
+          "name": "Start Async Checkout",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"checkoutId\": \"CHK-002\",\n  \"customerId\": \"CUST-002\",\n  \"shippingAddressId\": \"ADDR-002\",\n  \"payment\": {\n    \"method\": \"VA\",\n    \"bank\": \"BNI\"\n  },\n  \"items\": [\n    {\n      \"productId\": \"PROD-3003\",\n      \"quantity\": 1\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{orchestratorBase}}/api/v2/async/checkouts",
+              "host": ["{{orchestratorBase}}"],
+              "path": ["api", "v2", "async", "checkouts"]
+            },
+            "description": "Versi async dari Start Checkout — request diproses via CompletableFuture dan langsung mengembalikan 202."
+          },
+          "response": [
+            {
+              "name": "202 Accepted — Async checkout started",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{orchestratorBase}}/api/v2/async/checkouts",
+                  "host": ["{{orchestratorBase}}"],
+                  "path": ["api", "v2", "async", "checkouts"]
+                }
+              },
+              "status": "Accepted",
+              "code": 202,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"processId\": \"PROC-002\",\n  \"checkoutId\": \"CHK-002\",\n  \"status\": \"PROCESSING\",\n  \"message\": \"Checkout process has been started.\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Get Async Checkout Status",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{orchestratorBase}}/api/v2/async/checkouts/{{processId}}/status",
+              "host": ["{{orchestratorBase}}"],
+              "path": ["api", "v2", "async", "checkouts", "{{processId}}", "status"]
+            },
+            "description": "Mendapatkan status ringkas proses async."
+          },
+          "response": [
+            {
+              "name": "200 OK — Async status",
+              "originalRequest": {
+                "method": "GET",
+                "url": {
+                  "raw": "{{orchestratorBase}}/api/v2/async/checkouts/{{processId}}/status",
+                  "host": ["{{orchestratorBase}}"],
+                  "path": ["api", "v2", "async", "checkouts", "{{processId}}", "status"]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"processId\": \"PROC-002\",\n  \"status\": \"PROCESSING\",\n  \"message\": \"Currently processing your checkout request\"\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Orchestrator — Actuator",
+      "item": [
+        {
+          "name": "Health",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{orchestratorBase}}/actuator/health",
+              "host": ["{{orchestratorBase}}"],
+              "path": ["actuator", "health"]
+            },
+            "description": "Health check Spring Boot Actuator (show-details: always)."
+          },
+          "response": [
+            {
+              "name": "200 OK — UP",
+              "originalRequest": {
+                "method": "GET",
+                "url": {
+                  "raw": "{{orchestratorBase}}/actuator/health",
+                  "host": ["{{orchestratorBase}}"],
+                  "path": ["actuator", "health"]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"status\": \"UP\",\n  \"components\": {\n    \"db\": {\n      \"status\": \"UP\",\n      \"details\": {\n        \"database\": \"PostgreSQL\",\n        \"validationQuery\": \"isValid()\"\n      }\n    },\n    \"kafka\": {\n      \"status\": \"UP\",\n      \"details\": {\n        \"version\": \"7.5.0\"\n      }\n    },\n    \"ping\": {\n      \"status\": \"UP\"\n    }\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Metrics",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{orchestratorBase}}/actuator/metrics",
+              "host": ["{{orchestratorBase}}"],
+              "path": ["actuator", "metrics"]
+            }
+          },
+          "response": [
+            {
+              "name": "200 OK — Available metrics",
+              "originalRequest": {
+                "method": "GET",
+                "url": {
+                  "raw": "{{orchestratorBase}}/actuator/metrics",
+                  "host": ["{{orchestratorBase}}"],
+                  "path": ["actuator", "metrics"]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"names\": [\n    \"jvm.memory.used\",\n    \"jvm.memory.max\",\n    \"jvm.threads.live\",\n    \"http.server.requests\",\n    \"process.uptime\",\n    \"resilience4j.circuitbreaker.calls\",\n    \"resilience4j.circuitbreaker.state\"\n  ]\n}"
+            }
+          ]
+        },
+        {
+          "name": "Prometheus",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{orchestratorBase}}/actuator/prometheus",
+              "host": ["{{orchestratorBase}}"],
+              "path": ["actuator", "prometheus"]
+            }
+          },
+          "response": [
+            {
+              "name": "200 OK — Prometheus text format",
+              "originalRequest": {
+                "method": "GET",
+                "url": {
+                  "raw": "{{orchestratorBase}}/actuator/prometheus",
+                  "host": ["{{orchestratorBase}}"],
+                  "path": ["actuator", "prometheus"]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "text",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "text/plain; version=0.0.4; charset=utf-8"
+                }
+              ],
+              "cookie": [],
+              "body": "# HELP jvm_memory_used_bytes The amount of used memory\n# TYPE jvm_memory_used_bytes gauge\njvm_memory_used_bytes{area=\"heap\",id=\"G1 Eden Space\",} 1.57368192E8\n# HELP http_server_requests_seconds \n# TYPE http_server_requests_seconds summary\nhttp_server_requests_seconds_count{exception=\"None\",method=\"GET\",status=\"200\",uri=\"/actuator/prometheus\",} 3.0\n"
+            }
+          ]
+        },
+        {
+          "name": "Circuit Breakers",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{orchestratorBase}}/actuator/circuitbreakers",
+              "host": ["{{orchestratorBase}}"],
+              "path": ["actuator", "circuitbreakers"]
+            }
+          },
+          "response": [
+            {
+              "name": "200 OK — Circuit breaker state",
+              "originalRequest": {
+                "method": "GET",
+                "url": {
+                  "raw": "{{orchestratorBase}}/actuator/circuitbreakers",
+                  "host": ["{{orchestratorBase}}"],
+                  "path": ["actuator", "circuitbreakers"]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"circuitBreakers\": {\n    \"customerService\": {\n      \"failureRate\": \"0.0%\",\n      \"failureRateThreshold\": \"50.0%\",\n      \"slowCallRate\": \"0.0%\",\n      \"slowCallRateThreshold\": \"60.0%\",\n      \"bufferedCalls\": 10,\n      \"state\": \"CLOSED\"\n    },\n    \"paymentService\": {\n      \"failureRate\": \"0.0%\",\n      \"failureRateThreshold\": \"50.0%\",\n      \"slowCallRate\": \"0.0%\",\n      \"slowCallRateThreshold\": \"100.0%\",\n      \"bufferedCalls\": 10,\n      \"state\": \"CLOSED\"\n    },\n    \"fraudService\": {\n      \"failureRate\": \"66.7%\",\n      \"failureRateThreshold\": \"40.0%\",\n      \"slowCallRate\": \"0.0%\",\n      \"slowCallRateThreshold\": \"40.0%\",\n      \"bufferedCalls\": 6,\n      \"state\": \"OPEN\"\n    }\n  }\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Engine — Insights",
+      "item": [
+        {
+          "name": "Get Insight",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{engineBase}}/api/v1/insights/{{checkoutId}}",
+              "host": ["{{engineBase}}"],
+              "path": ["api", "v1", "insights", "{{checkoutId}}"]
+            },
+            "description": "Mendapatkan hasil insight (keputusan) Pulse Engine untuk sebuah checkout."
+          },
+          "response": [
+            {
+              "name": "200 OK — Insight (seed: CHK-001)",
+              "originalRequest": {
+                "method": "GET",
+                "url": {
+                  "raw": "{{engineBase}}/api/v1/insights/{{checkoutId}}",
+                  "host": ["{{engineBase}}"],
+                  "path": ["api", "v1", "insights", "{{checkoutId}}"]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"checkoutId\": \"CHK-001\",\n  \"customerId\": \"CUST-001\",\n  \"decision\": \"APPROVED\",\n  \"confidence\": \"HIGH\",\n  \"riskLevel\": \"LOW\",\n  \"reason\": \"Approved because customer is trusted\",\n  \"processedAt\": \"2026-08-01T19:00:05.123Z\",\n  \"insightType\": \"CHECKOUT_DECISION\"\n}"
+            },
+            {
+              "name": "500 — Insight not found",
+              "originalRequest": {
+                "method": "GET",
+                "url": {
+                  "raw": "{{engineBase}}/api/v1/insights/{{checkoutId}}",
+                  "host": ["{{engineBase}}"],
+                  "path": ["api", "v1", "insights", "{{checkoutId}}"]
+                }
+              },
+              "status": "Internal Server Error",
+              "code": 500,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"error\": \"Internal Server Error\",\n  \"message\": \"Insight not found for checkoutId: CHK-999\",\n  \"type\": \"NoResultException\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Search Insight",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"severity\": \"HIGH\",\n  \"type\": \"CHECKOUT_DECISION\",\n  \"customerId\": \"CUST-003\",\n  \"checkoutId\": \"CHK-003\",\n  \"page\": 0,\n  \"size\": 20\n}"
+            },
+            "url": {
+              "raw": "{{engineBase}}/api/v1/insights/search",
+              "host": ["{{engineBase}}"],
+              "path": ["api", "v1", "insights", "search"]
+            },
+            "description": "Mencari insight dengan filter opsional: severity, type, customerId, checkoutId, page, size (1-100, default 20)."
+          },
+          "response": [
+            {
+              "name": "200 OK — Paged results",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{engineBase}}/api/v1/insights/search",
+                  "host": ["{{engineBase}}"],
+                  "path": ["api", "v1", "insights", "search"]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"content\": [\n    {\n      \"checkoutId\": \"CHK-003\",\n      \"customerId\": \"CUST-003\",\n      \"decision\": \"REJECTED\",\n      \"confidence\": \"LOW\",\n      \"riskLevel\": \"HIGH\",\n      \"reason\": \"Rejected due to high risk profile\",\n      \"processedAt\": \"2026-08-01T19:00:05.123Z\",\n      \"insightType\": \"CHECKOUT_DECISION\"\n    }\n  ],\n  \"totalElements\": 1,\n  \"page\": 0,\n  \"size\": 20\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Engine — Timeline",
+      "item": [
+        {
+          "name": "Get Timeline",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{engineBase}}/api/v1/insights/{{checkoutId}}/timeline",
+              "host": ["{{engineBase}}"],
+              "path": ["api", "v1", "insights", "{{checkoutId}}", "timeline"]
+            },
+            "description": "Timeline event pemrosesan insight oleh pipeline Pulse Engine (Observe → Understand → Decide → Explain → Learn → Persist → Publish)."
+          },
+          "response": [
+            {
+              "name": "200 OK — Timeline (seed: CHK-001)",
+              "originalRequest": {
+                "method": "GET",
+                "url": {
+                  "raw": "{{engineBase}}/api/v1/insights/{{checkoutId}}/timeline",
+                  "host": ["{{engineBase}}"],
+                  "path": ["api", "v1", "insights", "{{checkoutId}}", "timeline"]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"checkoutId\": \"CHK-001\",\n  \"events\": [\n    {\n      \"eventName\": \"OBSERVE\",\n      \"time\": \"2026-08-01T18:59:58.000Z\"\n    },\n    {\n      \"eventName\": \"UNDERSTAND\",\n      \"time\": \"2026-08-01T18:59:59.000Z\"\n    },\n    {\n      \"eventName\": \"EXPLAIN\",\n      \"time\": \"2026-08-01T19:00:00.000Z\"\n    },\n    {\n      \"eventName\": \"LEARN\",\n      \"time\": \"2026-08-01T19:00:02.000Z\"\n    },\n    {\n      \"eventName\": \"PERSIST\",\n      \"time\": \"2026-08-01T19:00:03.000Z\"\n    },\n    {\n      \"eventName\": \"PUBLISH\",\n      \"time\": \"2026-08-01T19:00:04.000Z\"\n    }\n  ]\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Engine — Explanation",
+      "item": [
+        {
+          "name": "Get Explanation",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{engineBase}}/api/v1/insights/{{checkoutId}}/explanation",
+              "host": ["{{engineBase}}"],
+              "path": ["api", "v1", "insights", "{{checkoutId}}", "explanation"]
+            },
+            "description": "Penjelasan keputusan yang dapat dibaca manusia (human-readable) beserta faktor-faktor yang mempengaruhinya."
+          },
+          "response": [
+            {
+              "name": "200 OK — Explanation (seed: CHK-001)",
+              "originalRequest": {
+                "method": "GET",
+                "url": {
+                  "raw": "{{engineBase}}/api/v1/insights/{{checkoutId}}/explanation",
+                  "host": ["{{engineBase}}"],
+                  "path": ["api", "v1", "insights", "{{checkoutId}}", "explanation"]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"checkoutId\": \"CHK-001\",\n  \"decision\": \"APPROVED\",\n  \"confidence\": \"HIGH\",\n  \"reason\": \"Approved because customer is trusted\",\n  \"factors\": [\n    {\n      \"factor\": \"CUSTOMER\",\n      \"impact\": \"POSITIVE\",\n      \"detail\": \"VIP Customer\"\n    },\n    {\n      \"factor\": \"PAYMENT\",\n      \"impact\": \"POSITIVE\",\n      \"detail\": \"Payment Success\"\n    },\n    {\n      \"factor\": \"RISK\",\n      \"impact\": \"POSITIVE\",\n      \"detail\": \"Low Risk\"\n    },\n    {\n      \"factor\": \"DECISION\",\n      \"impact\": \"POSITIVE\",\n      \"detail\": \"Approved because customer is trusted\"\n    }\n  ]\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Engine — Learning",
+      "item": [
+        {
+          "name": "Customer Learning",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{engineBase}}/api/v1/customers/{{customerId}}/learning",
+              "host": ["{{engineBase}}"],
+              "path": ["api", "v1", "customers", "{{customerId}}", "learning"]
+            },
+            "description": "Profil learning pelanggan: segmen, pola perilaku, dan metrik historis."
+          },
+          "response": [
+            {
+              "name": "200 OK — Learning profile (seed: CUST-001)",
+              "originalRequest": {
+                "method": "GET",
+                "url": {
+                  "raw": "{{engineBase}}/api/v1/customers/{{customerId}}/learning",
+                  "host": ["{{engineBase}}"],
+                  "path": ["api", "v1", "customers", "{{customerId}}", "learning"]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"customerId\": \"CUST-001\",\n  \"segment\": \"VIP\",\n  \"patterns\": [\n    {\n      \"pattern\": \"HIGH_FREQUENCY_SHOPPER\",\n      \"description\": \"Customer melakukan checkout lebih dari 10 kali dalam 30 hari\",\n      \"occurrences\": 24\n    },\n    {\n      \"pattern\": \"CREDIT_CARD_PREFERRED\",\n      \"description\": \"Customer cenderung memilih pembayaran kartu kredit\",\n      \"occurrences\": 18\n    }\n  ],\n  \"metrics\": [\n    {\n      \"name\": \"purchaseCount\",\n      \"value\": \"24\"\n    },\n    {\n      \"name\": \"successfulCheckout\",\n      \"value\": \"23\"\n    },\n    {\n      \"name\": \"rejectedCheckout\",\n      \"value\": \"1\"\n    },\n    {\n      \"name\": \"averageAmount\",\n      \"value\": \"2500000\"\n    },\n    {\n      \"name\": \"highestAmount\",\n      \"value\": \"8500000\"\n    },\n    {\n      \"name\": \"preferredPaymentMethod\",\n      \"value\": \"CREDIT_CARD\"\n    }\n  ]\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Engine — Dashboard",
+      "item": [
+        {
+          "name": "Dashboard",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{engineBase}}/api/v1/dashboard",
+              "host": ["{{engineBase}}"],
+              "path": ["api", "v1", "dashboard"]
+            },
+            "description": "Agregasi metrik & statistik pemrosesan insight Pulse Engine."
+          },
+          "response": [
+            {
+              "name": "200 OK — Dashboard metrics",
+              "originalRequest": {
+                "method": "GET",
+                "url": {
+                  "raw": "{{engineBase}}/api/v1/dashboard",
+                  "host": ["{{engineBase}}"],
+                  "path": ["api", "v1", "dashboard"]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"totalProcessed\": 154,\n  \"approved\": 121,\n  \"review\": 21,\n  \"rejected\": 12,\n  \"avgProcessingTimeMs\": 142.5,\n  \"metrics\": [\n    {\n      \"name\": \"approvedRate\",\n      \"value\": 78\n    },\n    {\n      \"name\": \"reviewRate\",\n      \"value\": 14\n    },\n    {\n      \"name\": \"rejectedRate\",\n      \"value\": 8\n    }\n  ]\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Engine — Capabilities",
+      "item": [
+        {
+          "name": "Capabilities Health",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{engineBase}}/api/v1/capabilities",
+              "host": ["{{engineBase}}"],
+              "path": ["api", "v1", "capabilities"]
+            },
+            "description": "Status setiap capability Pulse Engine: observe, understand, explain, learn, persist, publish."
+          },
+          "response": [
+            {
+              "name": "200 OK — All capabilities UP",
+              "originalRequest": {
+                "method": "GET",
+                "url": {
+                  "raw": "{{engineBase}}/api/v1/capabilities",
+                  "host": ["{{engineBase}}"],
+                  "path": ["api", "v1", "capabilities"]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"observe\": \"UP\",\n  \"understand\": \"UP\",\n  \"explain\": \"UP\",\n  \"learn\": \"UP\",\n  \"persist\": \"UP\",\n  \"publish\": \"UP\"\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Engine — Built-in",
+      "item": [
+        {
+          "name": "Health",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{engineBase}}/q/health",
+              "host": ["{{engineBase}}"],
+              "path": ["q", "health"]
+            },
+            "description": "SmallRye Health — health check Quarkus (digunakan oleh Docker Compose healthcheck)."
+          },
+          "response": [
+            {
+              "name": "200 OK — UP",
+              "originalRequest": {
+                "method": "GET",
+                "url": {
+                  "raw": "{{engineBase}}/q/health",
+                  "host": ["{{engineBase}}"],
+                  "path": ["q", "health"]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"status\": \"UP\",\n  \"checks\": [\n    {\n      \"name\": \"Database connections health check\",\n      \"status\": \"UP\",\n      \"data\": {\n        \"<default>\": \"UP\"\n      }\n    },\n    {\n      \"name\": \"Kafka connection health check\",\n      \"status\": \"UP\"\n    },\n    {\n      \"name\": \"SmallRye Reactive Messaging - liveness check\",\n      \"status\": \"UP\"\n    }\n  ]\n}"
+            }
+          ]
+        },
+        {
+          "name": "Metrics",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{engineBase}}/q/metrics",
+              "host": ["{{engineBase}}"],
+              "path": ["q", "metrics"]
+            },
+            "description": "Micrometer metrics — format Prometheus (quarkus.micrometer.export.prometheus.enabled=true)."
+          },
+          "response": [
+            {
+              "name": "200 OK — Prometheus text format",
+              "originalRequest": {
+                "method": "GET",
+                "url": {
+                  "raw": "{{engineBase}}/q/metrics",
+                  "host": ["{{engineBase}}"],
+                  "path": ["q", "metrics"]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "text",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "text/plain; version=0.0.4; charset=utf-8"
+                }
+              ],
+              "cookie": [],
+              "body": "# HELP process_uptime_seconds The uptime of the Java virtual machine\n# TYPE process_uptime_seconds gauge\nprocess_uptime_seconds 1427.0\n# HELP http_server_requests_seconds \n# TYPE http_server_requests_seconds summary\nhttp_server_requests_seconds_count{method=\"GET\",outcome=\"SUCCESS\",status=\"200\",uri=\"/api/v1/dashboard\",} 5.0\n"
+            }
+          ]
+        },
+        {
+          "name": "OpenAPI",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{engineBase}}/q/openapi",
+              "host": ["{{engineBase}}"],
+              "path": ["q", "openapi"]
+            },
+            "description": "Dokumentasi OpenAPI/Swagger spec (JSON)."
+          },
+          "response": [
+            {
+              "name": "200 OK — OpenAPI spec (ringkas)",
+              "originalRequest": {
+                "method": "GET",
+                "url": {
+                  "raw": "{{engineBase}}/q/openapi",
+                  "host": ["{{engineBase}}"],
+                  "path": ["q", "openapi"]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"openapi\": \"3.0.3\",\n  \"info\": {\n    \"title\": \"Pulse Engine API\",\n    \"description\": \"Intelligent decision layer for checkout processing...\",\n    \"version\": \"1.0.0\"\n  },\n  \"paths\": {\n    \"/api/v1/insights/{checkoutId}\": {\n      \"get\": {\n        \"tags\": [\"Insights\"],\n        \"operationId\": \"getInsight\"\n      }\n    },\n    \"/api/v1/insights/search\": {\n      \"post\": {\n        \"tags\": [\"Insights\"],\n        \"operationId\": \"searchInsights\"\n      }\n    }\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Swagger UI",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{engineBase}}/q/swagger-ui",
+              "host": ["{{engineBase}}"],
+              "path": ["q", "swagger-ui"]
+            },
+            "description": "UI interaktif Swagger untuk mengeksplorasi API Engine. (Mengembalikan HTML.)"
+          },
+          "response": [
+            {
+              "name": "200 OK — HTML",
+              "originalRequest": {
+                "method": "GET",
+                "url": {
+                  "raw": "{{engineBase}}/q/swagger-ui",
+                  "host": ["{{engineBase}}"],
+                  "path": ["q", "swagger-ui"]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "html",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "text/html"
+                }
+              ],
+              "cookie": [],
+              "body": "<!DOCTYPE html>\n<html lang=\"en\">\n  <head>\n    <meta charset=\"UTF-8\">\n    <title>Swagger UI</title>\n  </head>\n  <body>\n    <!-- Swagger UI mounts here -->\n  </body>\n</html>"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

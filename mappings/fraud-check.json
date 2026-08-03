@@ -1,0 +1,15 @@
+{
+  "request": {
+    "method": "GET",
+    "urlPathPattern": "/fraud/check/.*"
+  },
+  "response": {
+    "status": 200,
+    "jsonBody": {
+      "customerId": "CUST-001",
+      "fraudScore": 20,
+      "riskLevel": "LOW",
+      "message": "Regular customer with normal fraud risk profile"
+    }
+  }
+}

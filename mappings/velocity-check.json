@@ -1,0 +1,15 @@
+{
+  "request": {
+    "method": "GET",
+    "urlPathPattern": "/velocity/check/.*"
+  },
+  "response": {
+    "status": 200,
+    "jsonBody": {
+      "customerId": "CUST-001",
+      "velocityScore": 45,
+      "riskLevel": "LOW",
+      "message": "Regular customer with normal transaction velocity"
+    }
+  }
+}

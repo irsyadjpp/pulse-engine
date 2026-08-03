@@ -1,0 +1,144 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<dmn:definitions xmlns:dmn="https://www.omg.org/spec/DMN/20180521/MODEL" xmlns:dmndi="https://www.omg.org/spec/DMN/20180521/DMNDI" xmlns:dc="http://www.omg.org/spec/DMN/20180521/DC" xmlns:di="http://www.omg.org/spec/DMN/20180521/DI" xmlns:feel="http://www.omg.org/spec/FEEL/20140401" xmlns:kie="http://www.drools.org/kie/dmn/1.2" id="Definitions_CheckoutRisk" name="checkout-risk" namespace="http://www.irsyad.pulse/checkout-risk" kie:model="AssessRisk">
+  <dmn:decision id="assess-risk" name="AssessRisk" kie:model="AssessRisk" kie:namespace="http://www.irsyad.pulse/checkout-risk">
+    <dmn:variable name="result" typeRef="string" id="_VARIABLE_RESULT" />
+    <dmn:informationRequirement id="_IR_AGE">
+      <dmn:requiredInput href="#input-age" />
+    </dmn:informationRequirement>
+    <dmn:informationRequirement id="_IR_OCCUPATION">
+      <dmn:requiredInput href="#input-occupation-class" />
+    </dmn:informationRequirement>
+    <dmn:informationRequirement id="_IR_CONFIDENCE">
+      <dmn:requiredInput href="#input-confidence-score" />
+    </dmn:informationRequirement>
+    <dmn:informationRequirement id="_IR_TOTAL_UP">
+      <dmn:requiredInput href="#input-total-active-sum-insured" />
+    </dmn:informationRequirement>
+    <dmn:informationRequirement id="_IR_REQUESTED_UP">
+      <dmn:requiredInput href="#input-requested-sum-insured" />
+    </dmn:informationRequirement>
+    <dmn:decisionTable id="dt-assess-risk" hitPolicy="FIRST" preferredOrientation="Rule-as-Row">
+      <dmn:input id="in-age" label="Age">
+        <dmn:inputExpression typeRef="number" id="_IN_AGE_EXPR">
+          <dmn:text>age</dmn:text>
+        </dmn:inputExpression>
+      </dmn:input>
+      <dmn:input id="in-occupation" label="Occupation Class">
+        <dmn:inputExpression typeRef="string" id="_IN_OCC_EXPR">
+          <dmn:text>occupationClass</dmn:text>
+        </dmn:inputExpression>
+      </dmn:input>
+      <dmn:input id="in-confidence" label="eKYC Confidence Score">
+        <dmn:inputExpression typeRef="number" id="_IN_CONF_EXPR">
+          <dmn:text>confidenceScore</dmn:text>
+        </dmn:inputExpression>
+      </dmn:input>
+      <dmn:input id="in-total-up" label="Total Active Sum Insured">
+        <dmn:inputExpression typeRef="number" id="_IN_TOTAL_EXPR">
+          <dmn:text>totalActiveSumInsured</dmn:text>
+        </dmn:inputExpression>
+      </dmn:input>
+      <dmn:input id="in-requested-up" label="Requested Sum Insured">
+        <dmn:inputExpression typeRef="number" id="_IN_REQ_EXPR">
+          <dmn:text>requestedSumInsured</dmn:text>
+        </dmn:inputExpression>
+      </dmn:input>
+      <dmn:output id="out-decision" label="Decision" name="decision" typeRef="string" />
+      <dmn:output id="out-reason" label="Reason Code" name="reasonCode" typeRef="string" />
+      <dmn:output id="out-risk" label="Risk Level" name="riskLevel" typeRef="string" />
+      <dmn:rule id="rule-approve-low-risk">
+        <dmn:inputEntry id="r1-age">
+          <dmn:text>age >= 17</dmn:text>
+        </dmn:inputEntry>
+        <dmn:inputEntry id="r1-occ">
+          <dmn:text>"Clerical"</dmn:text>
+        </dmn:inputEntry>
+        <dmn:inputEntry id="r1-conf">
+          <dmn:text>confidenceScore >= 85</dmn:text>
+        </dmn:inputEntry>
+        <dmn:inputEntry id="r1-total">
+          <dmn:text><= 500000000</dmn:text>
+        </dmn:inputEntry>
+        <dmn:inputEntry id="r1-req">
+          <dmn:text><= 250000000</dmn:text>
+        </dmn:inputEntry>
+        <dmn:outputEntry id="r1-dec">
+          <dmn:text>"APPROVE"</dmn:text>
+        </dmn:outputEntry>
+        <dmn:outputEntry id="r1-reason">
+          <dmn:text>"LOW_RISK"</dmn:text>
+        </dmn:outputEntry>
+        <dmn:outputEntry id="r1-risk">
+          <dmn:text>"LOW"</dmn:text>
+        </dmn:outputEntry>
+      </dmn:rule>
+      <dmn:rule id="rule-review-medium">
+        <dmn:inputEntry id="r2-age">
+          <dmn:text>age >= 17</dmn:text>
+        </dmn:inputEntry>
+        <dmn:inputEntry id="r2-occ">
+          <dmn:text>occupationClass != null</dmn:text>
+        </dmn:inputEntry>
+        <dmn:inputEntry id="r2-conf">
+          <dmn:text>< 85</dmn:text>
+        </dmn:inputEntry>
+        <dmn:inputEntry id="r2-total">
+          <dmn:text>> 500000000 or <= 100000000</dmn:text>
+        </dmn:inputEntry>
+        <dmn:inputEntry id="r2-req">
+          <dmn:text>> 250000000 and <= 500000000</dmn:text>
+        </dmn:inputEntry>
+        <dmn:outputEntry id="r2-dec">
+          <dmn:text>"REVIEW"</dmn:text>
+        </dmn:outputEntry>
+        <dmn:outputEntry id="r2-reason">
+          <dmn:text>"MEDIUM_RISK"</dmn:text>
+        </dmn:outputEntry>
+        <dmn:outputEntry id="r2-risk">
+          <dmn:text>"MEDIUM"</dmn:text>
+        </dmn:outputEntry>
+      </dmn:rule>
+      <dmn:rule id="rule-reject-high">
+        <dmn:inputEntry id="r3-age">
+          <dmn:text>true</dmn:text>
+        </dmn:inputEntry>
+        <dmn:inputEntry id="r3-occ">
+          <dmn:text>true</dmn:text>
+        </dmn:inputEntry>
+        <dmn:inputEntry id="r3-conf">
+          <dmn:text>true</dmn:text>
+        </dmn:inputEntry>
+        <dmn:inputEntry id="r3-total">
+          <dmn:text>true</dmn:text>
+        </dmn:inputEntry>
+        <dmn:inputEntry id="r3-req">
+          <dmn:text>true</dmn:text>
+        </dmn:inputEntry>
+        <dmn:outputEntry id="r3-dec">
+          <dmn:text>"REJECT"</dmn:text>
+        </dmn:outputEntry>
+        <dmn:outputEntry id="r3-reason">
+          <dmn:text>"HIGH_RISK"</dmn:text>
+        </dmn:outputEntry>
+        <dmn:outputEntry id="r3-risk">
+          <dmn:text>"HIGH"</dmn:text>
+        </dmn:outputEntry>
+      </dmn:rule>
+    </dmn:decisionTable>
+  </dmn:decision>
+  <dmn:inputData id="input-age" name="age">
+    <dmn:variable name="age" typeRef="number" id="_VAR_AGE" />
+  </dmn:inputData>
+  <dmn:inputData id="input-occupation-class" name="occupationClass">
+    <dmn:variable name="occupationClass" typeRef="string" id="_VAR_OCC" />
+  </dmn:inputData>
+  <dmn:inputData id="input-confidence-score" name="confidenceScore">
+    <dmn:variable name="confidenceScore" typeRef="number" id="_VAR_CONF" />
+  </dmn:inputData>
+  <dmn:inputData id="input-total-active-sum-insured" name="totalActiveSumInsured">
+    <dmn:variable name="totalActiveSumInsured" typeRef="number" id="_VAR_TOTAL" />
+  </dmn:inputData>
+  <dmn:inputData id="input-requested-sum-insured" name="requestedSumInsured">
+    <dmn:variable name="requestedSumInsured" typeRef="number" id="_VAR_REQ" />
+  </dmn:inputData>
+</dmn:definitions>

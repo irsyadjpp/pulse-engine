@@ -1,0 +1,13 @@
+{
+  "request": {
+    "method": "GET",
+    "urlPath": "/dukcapil/health"
+  },
+  "response": {
+    "status": 200,
+    "jsonBody": {
+      "status": "UP",
+      "service": "dukcapil"
+    }
+  }
+}

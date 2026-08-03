@@ -1,0 +1,16 @@
+.git
+.gitignore
+.idea
+.vscode
+*.iml
+*.log
+node_modules
+target
+apps/*/target
+postman
+docker
+mappings
+
+# Maven wrapper is not needed inside the image build
+mvnw
+mvnw.cmd

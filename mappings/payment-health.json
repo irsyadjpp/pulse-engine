@@ -1,0 +1,13 @@
+{
+  "request": {
+    "method": "GET",
+    "urlPath": "/payment/health"
+  },
+  "response": {
+    "status": 200,
+    "jsonBody": {
+      "status": "UP",
+      "service": "payment"
+    }
+  }
+}

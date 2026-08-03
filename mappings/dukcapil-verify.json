@@ -1,0 +1,15 @@
+{
+  "request": {
+    "method": "GET",
+    "urlPathPattern": "/dukcapil/verify/.*"
+  },
+  "response": {
+    "status": 200,
+    "jsonBody": {
+      "nik": "3201234567890001",
+      "status": "MATCH",
+      "dukcapilStatus": "VALID",
+      "message": "Identity verified in Dukcapil database"
+    }
+  }
+}

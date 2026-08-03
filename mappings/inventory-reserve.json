@@ -1,0 +1,15 @@
+{
+  "request": {
+    "method": "POST",
+    "urlPath": "/inventory/reserve"
+  },
+  "response": {
+    "status": 200,
+    "jsonBody": {
+      "reservationId": "RES-{{randomValue}}",
+      "orderId": "{{jsonPath request.body '$.orderId'}}",
+      "reserved": true,
+      "message": "Inventory reserved successfully"
+    }
+  }
+}
