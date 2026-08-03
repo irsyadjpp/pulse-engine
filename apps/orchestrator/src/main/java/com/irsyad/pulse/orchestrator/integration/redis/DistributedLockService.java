@@ -1,7 +1,6 @@
 package com.irsyad.pulse.orchestrator.integration.redis;
 
 import io.quarkus.redis.datasource.RedisDataSource;
-import io.quarkus.redis.datasource.keys.ExpireArgs;
 import io.quarkus.redis.datasource.keys.KeyCommands;
 import io.quarkus.redis.datasource.value.ValueCommands;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -37,13 +36,15 @@ public class DistributedLockService {
             ValueCommands<String, String> valueCommands = redisDataSource.value(String.class, String.class);
             KeyCommands<String> keyCommands = redisDataSource.key(String.class);
 
-            // SETNX lockKey "LOCKED" - returns true if set, false if key exists
+            // SETNX (atomic key creation) then set TTL so the lock auto-expires.
+            // In this Quarkus version, valueCommands.set(key, value, SetArgs) returns void,
+            // so atomic SET NX EX with a return value is not available — setnx is the
+            // atomic primitive for lock acquisition.
             boolean acquired = valueCommands.setnx(lockKey, "LOCKED");
 
             if (acquired) {
-                // Set TTL on the lock key so it auto-expires
                 keyCommands.expire(lockKey, ttlSeconds);
-                LOG.info("Lock acquired: {}", lockKey);
+                LOG.info("Lock acquired: {} with TTL: {} seconds", lockKey, ttlSeconds);
                 return true;
             } else {
                 LOG.warn("Lock already held: {}", lockKey);

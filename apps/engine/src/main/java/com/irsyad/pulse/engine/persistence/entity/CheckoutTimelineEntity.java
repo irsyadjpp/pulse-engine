@@ -1,13 +1,19 @@
 package com.irsyad.pulse.engine.persistence.entity;
 
 import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.time.Instant;
 
 @Setter
 @Getter
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
 @Entity
 @Table(name = "checkout_timeline", schema = "pulse_engine")
 public class CheckoutTimelineEntity {
@@ -38,13 +44,4 @@ public class CheckoutTimelineEntity {
 
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
-
-    // Default constructor
-    public CheckoutTimelineEntity() {
-    }
-
-    // Builder pattern
-    public static CheckoutTimelineEntityBuilder builder() {
-        return new CheckoutTimelineEntityBuilder();
-    }
 }

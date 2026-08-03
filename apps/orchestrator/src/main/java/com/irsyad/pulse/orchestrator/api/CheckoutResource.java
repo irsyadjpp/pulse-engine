@@ -20,7 +20,7 @@ public class CheckoutResource {
 
     // 1. Start Checkout Process
     @POST
-    @Path("/checkout")
+    @Path("/checkouts")
     public Response startCheckout(CheckoutApiRequest request) {
         CheckoutStartResponse response = checkoutService.startCheckout(request);
         return Response.accepted().entity(response).build();
@@ -28,7 +28,7 @@ public class CheckoutResource {
 
     // 2. Get Checkout Process
     @GET
-    @Path("/checkout/{processId}")
+    @Path("/checkouts/{processId}")
     public Response getCheckout(@PathParam("processId") String processId) {
         CheckoutProcessResponse response = checkoutService.getCheckoutProcess(processId);
         return Response.ok(response).build();
@@ -36,7 +36,7 @@ public class CheckoutResource {
 
     // 3. Get Process Timeline
     @GET
-    @Path("/checkout/{processId}/timeline")
+    @Path("/checkouts/{processId}/timeline")
     public Response getTimeline(@PathParam("processId") String processId) {
         ProcessTimelineResponse response = checkoutService.getProcessTimeline(processId);
         return Response.ok(response).build();
@@ -44,7 +44,7 @@ public class CheckoutResource {
 
     // 4. Get Decision
     @GET
-    @Path("/checkout/{processId}/decision")
+    @Path("/checkouts/{processId}/decision")
     public Response getDecision(@PathParam("processId") String processId) {
         DecisionResponse response = checkoutService.getDecision(processId);
         return Response.ok(response).build();
@@ -52,7 +52,7 @@ public class CheckoutResource {
 
     // 5. Retry Process
     @POST
-    @Path("/checkout/{processId}/retry")
+    @Path("/checkouts/{processId}/retry")
     public Response retryProcess(@PathParam("processId") String processId, RetryRequest request) {
         RetryResponse response = checkoutService.retryProcess(processId, request);
         return Response.ok(response).build();
@@ -60,7 +60,7 @@ public class CheckoutResource {
 
     // 6. Cancel Process
     @POST
-    @Path("/checkout/{processId}/cancel")
+    @Path("/checkouts/{processId}/cancel")
     public Response cancelProcess(@PathParam("processId") String processId, CancelRequest request) {
         CancelResponse response = checkoutService.cancelProcess(processId, request);
         return Response.ok(response).build();
@@ -68,7 +68,7 @@ public class CheckoutResource {
 
     // 7. List Checkouts
     @GET
-    @Path("/checkout")
+    @Path("/checkouts")
     public Response listCheckouts(
             @QueryParam("status") String status,
             @QueryParam("customerId") String customerId,

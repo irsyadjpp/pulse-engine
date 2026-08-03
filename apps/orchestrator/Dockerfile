@@ -6,9 +6,10 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
-COPY apps/orchestrator/target/orchestrator.jar app.jar
+COPY apps/orchestrator/target/orchestrator-1.0.0-SNAPSHOT.jar app.jar
 
 EXPOSE 7021
 
-# Profile is injected at runtime via SPRING_PROFILES_ACTIVE (e.g. prod in docker-compose)
+# Profile is injected at runtime via QUARKUS_PROFILE (e.g. prod in docker-compose)
+ENV QUARKUS_HTTP_HOST=0.0.0.0
 ENTRYPOINT ["java", "-jar", "app.jar"]

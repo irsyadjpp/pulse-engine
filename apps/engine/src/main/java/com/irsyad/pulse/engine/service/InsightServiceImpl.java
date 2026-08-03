@@ -27,50 +27,16 @@ public class InsightServiceImpl implements InsightService {
 
     @Override
     public List<InsightItemResponse> searchInsights(SearchInsightRequest request) {
-        // Build dynamic query based on available filters in SearchInsightRequest
-        StringBuilder query = new StringBuilder("SELECT i FROM CheckoutInsightEntity i WHERE 1=1");
+        // Idiomatic Panache query with pagination; repository handles the dynamic
+        // WHERE clause and ORDER BY processedAt DESC.
+        List<CheckoutInsightEntity> entities = checkoutInsightRepository.search(
+                request.checkoutId(),
+                request.customerId(),
+                request.severity(),
+                request.type(),
+                request.page(),
+                request.size());
 
-        if (request.checkoutId() != null && !request.checkoutId().isEmpty()) {
-            query.append(" AND i.checkoutId LIKE :checkoutId");
-        }
-        if (request.customerId() != null && !request.customerId().isEmpty()) {
-            query.append(" AND i.customerId LIKE :customerId");
-        }
-        if (request.severity() != null && !request.severity().isEmpty()) {
-            query.append(" AND i.insightType = :severity");
-        }
-        if (request.type() != null && !request.type().isEmpty()) {
-            query.append(" AND i.decision = :type");
-        }
-
-        // Default sort by processedAt DESC
-        query.append(" ORDER BY i.processedAt DESC");
-
-        // Create query
-        jakarta.persistence.Query q = checkoutInsightRepository.getEntityManager()
-                .createQuery(query.toString(), CheckoutInsightEntity.class);
-
-        // Set parameters
-        if (request.checkoutId() != null && !request.checkoutId().isEmpty()) {
-            q.setParameter("checkoutId", "%" + request.checkoutId() + "%");
-        }
-        if (request.customerId() != null && !request.customerId().isEmpty()) {
-            q.setParameter("customerId", "%" + request.customerId() + "%");
-        }
-        if (request.severity() != null && !request.severity().isEmpty()) {
-            q.setParameter("severity", request.severity());
-        }
-        if (request.type() != null && !request.type().isEmpty()) {
-            q.setParameter("type", request.type());
-        }
-
-        // Pagination
-        int page = request.page();
-        int size = request.size();
-        q.setFirstResult(page * size);
-        q.setMaxResults(size);
-
-        List<CheckoutInsightEntity> entities = q.getResultList();
         return entities.stream()
                 .map(InsightMapper::toResponse)
                 .toList();

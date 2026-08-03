@@ -4,7 +4,10 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.math.BigDecimal;
@@ -12,6 +15,9 @@ import java.time.Instant;
 
 @Setter
 @Getter
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
 @Entity
 @Table(name = "customer_learning", schema = "pulse_engine")
 public class CustomerLearningEntity {
@@ -53,13 +59,4 @@ public class CustomerLearningEntity {
 
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
-
-    // Default constructor
-    public CustomerLearningEntity() {
-    }
-
-    // Builder pattern
-    public static CustomerLearningEntityBuilder builder() {
-        return new CustomerLearningEntityBuilder();
-    }
 }

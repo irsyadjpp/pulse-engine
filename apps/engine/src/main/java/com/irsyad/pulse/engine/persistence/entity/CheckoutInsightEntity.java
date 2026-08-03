@@ -4,7 +4,10 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.math.BigDecimal;
@@ -12,6 +15,9 @@ import java.time.Instant;
 
 @Setter
 @Getter
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
 @Entity
 @Table(name = "checkout_insight", schema = "pulse_engine")
 public class CheckoutInsightEntity {
@@ -59,13 +65,4 @@ public class CheckoutInsightEntity {
 
     @Column(name = "insight_type")
     private String insightType;
-
-    // Default constructor
-    public CheckoutInsightEntity() {
-    }
-
-    // Builder pattern
-    public static CheckoutInsightEntityBuilder builder() {
-        return new CheckoutInsightEntityBuilder();
-    }
 }
