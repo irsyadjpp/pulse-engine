@@ -10,7 +10,7 @@ import java.util.List;
 public class CheckoutTimelineRepository implements PanacheRepositoryBase<CheckoutTimelineEntity, Long> {
     
     public List<CheckoutTimelineEntity> findByCheckoutIdOrderByEventTimeAsc(String checkoutId) {
-        return list("checkoutId", checkoutId);
+        return list("checkoutId = ?1 ORDER BY eventTime ASC", checkoutId);
     }
 
     public Double getAverageProcessingTimeMs() {

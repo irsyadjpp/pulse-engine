@@ -37,7 +37,7 @@ public class InsightServiceImpl implements InsightService {
             query.append(" AND i.customerId LIKE :customerId");
         }
         if (request.severity() != null && !request.severity().isEmpty()) {
-            query.append(" AND i.confidence = :severity");
+            query.append(" AND i.insightType = :severity");
         }
         if (request.type() != null && !request.type().isEmpty()) {
             query.append(" AND i.decision = :type");

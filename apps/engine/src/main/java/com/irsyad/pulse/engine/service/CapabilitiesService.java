@@ -16,6 +16,7 @@ public class CapabilitiesService {
                 "observe", "UP",
                 "understand", "UP",
                 "explain", "UP",
+                "decide", "UP",
                 "learn", "UP",
                 "persist", "UP",
                 "publish", "UP"
