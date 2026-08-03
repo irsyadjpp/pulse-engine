@@ -1,6 +1,6 @@
 {
   "schema": "pulse-engine",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Kafka topic topology for Pulse Engine - Capability Event Pipeline architecture",
   "defaults": {
     "replicationFactor": 1,
@@ -18,25 +18,16 @@
       "producer": "Orchestrator",
       "consumers": ["Engine-Observe"],
       "messageKey": "businessKey",
-      "description": "Main entry event from Kogito BPMN after checkout process completes"
+      "description": "Main entry event from Kogito BPMN after checkout process completes (Process + Decision capabilities)"
     },
     {
-      "name": "pulse.checkout.completed.retry",
+      "name": "pulse.decision.completed.v1",
       "partitions": 6,
-      "retentionMs": 86400000,
-      "producer": "Engine",
-      "consumers": ["Engine-Observe"],
-      "messageKey": "businessKey",
-      "description": "Retry queue for transient failures in Observe capability (max 3 retries)"
-    },
-    {
-      "name": "pulse.checkout.completed.dlq",
-      "partitions": 1,
       "retentionMs": 2592000000,
-      "producer": "Engine",
-      "consumers": ["Operations"],
+      "producer": "Engine-Decide",
+      "consumers": ["Analytics", "Dashboard", "Notification"],
       "messageKey": "businessKey",
-      "description": "Dead letter queue for pulse.checkout.completed after exhausted retries"
+      "description": "Decision result produced by Pulse Engine (Decide capability)"
     },
     {
       "name": "pulse.insight.generated.v1",
@@ -45,16 +36,52 @@
       "producer": "Engine-Publish",
       "consumers": ["Analytics", "Dashboard", "Notification"],
       "messageKey": "businessKey",
-      "description": "Final insight event published by Engine after all 6 capabilities complete"
+      "description": "Final insight event published by Engine after all capabilities complete (Explain capability)"
     },
     {
-      "name": "pulse.insight.generated.dlq",
+      "name": "pulse.checkout.failed.v1",
+      "partitions": 1,
+      "retentionMs": 2592000000,
+      "producer": "Engine",
+      "consumers": ["Operations", "Monitoring"],
+      "messageKey": "businessKey",
+      "description": "Processing failure event for observability"
+    },
+    {
+      "name": "pulse.checkout.retry.v1",
+      "partitions": 6,
+      "retentionMs": 86400000,
+      "producer": "Engine",
+      "consumers": ["Engine-Observe"],
+      "messageKey": "businessKey",
+      "description": "Retry queue for transient failures with exponential backoff (max 3 retries)"
+    },
+    {
+      "name": "pulse.checkout.completed.v1.dlq",
       "partitions": 1,
       "retentionMs": 2592000000,
       "producer": "Engine",
       "consumers": ["Operations"],
       "messageKey": "businessKey",
-      "description": "Dead letter queue for pulse.insight.generated after exhausted retries"
+      "description": "Dead letter queue for pulse.checkout.completed.v1 after exhausted retries"
+    },
+    {
+      "name": "pulse.decision.completed.v1.dlq",
+      "partitions": 1,
+      "retentionMs": 2592000000,
+      "producer": "Engine",
+      "consumers": ["Operations"],
+      "messageKey": "businessKey",
+      "description": "Dead letter queue for pulse.decision.completed.v1 after exhausted retries"
+    },
+    {
+      "name": "pulse.insight.generated.v1.dlq",
+      "partitions": 1,
+      "retentionMs": 2592000000,
+      "producer": "Engine",
+      "consumers": ["Operations"],
+      "messageKey": "businessKey",
+      "description": "Dead letter queue for pulse.insight.generated.v1 after exhausted retries"
     }
   ]
 }
