@@ -13,8 +13,8 @@ import com.irsyad.pulse.engine.persistence.repository.CustomerLearningRepository
 import com.irsyad.pulse.engine.service.DecisionService;
 import com.irsyad.pulse.engine.service.ExplanationService;
 import com.irsyad.pulse.engine.service.UnderstandingService;
-import com.irsyad.pulse.engine.model.event.EventHeader;
-import com.irsyad.pulse.engine.model.event.InsightGeneratedEvent;
+import com.irsyad.pulse.engine.event.EventHeader;
+import com.irsyad.pulse.engine.event.InsightGeneratedEvent;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import org.jboss.logging.Logger;

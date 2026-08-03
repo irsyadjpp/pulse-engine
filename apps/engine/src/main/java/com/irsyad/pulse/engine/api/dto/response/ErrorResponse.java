@@ -1,4 +1,4 @@
-package com.irsyad.pulse.engine.model.dto;
+package com.irsyad.pulse.engine.api.dto.response;
 
 import java.time.Instant;
 

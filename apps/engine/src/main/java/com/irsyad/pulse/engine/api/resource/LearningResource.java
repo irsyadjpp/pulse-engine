@@ -1,7 +1,7 @@
 package com.irsyad.pulse.engine.api.resource;
 
+import com.irsyad.pulse.engine.api.dto.response.ErrorResponse;
 import com.irsyad.pulse.engine.api.dto.response.LearningResponse;
-import com.irsyad.pulse.engine.model.dto.ErrorResponse;
 import com.irsyad.pulse.engine.service.LearningService;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.GET;

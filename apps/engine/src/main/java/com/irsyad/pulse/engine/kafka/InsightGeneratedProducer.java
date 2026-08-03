@@ -1,6 +1,6 @@
 package com.irsyad.pulse.engine.kafka;
 
-import com.irsyad.pulse.engine.model.event.InsightGeneratedEvent;
+import com.irsyad.pulse.engine.event.InsightGeneratedEvent;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import org.eclipse.microprofile.reactive.messaging.Channel;

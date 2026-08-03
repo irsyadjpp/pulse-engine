@@ -1,4 +1,4 @@
-package com.irsyad.pulse.engine.model.event;
+package com.irsyad.pulse.engine.event;
 
 import java.time.Instant;
 

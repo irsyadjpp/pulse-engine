@@ -3,7 +3,7 @@ package com.irsyad.pulse.engine.api.resource;
 import com.irsyad.pulse.engine.api.dto.request.SearchInsightRequest;
 import com.irsyad.pulse.engine.api.dto.response.InsightItemResponse;
 import com.irsyad.pulse.engine.api.dto.response.PagedResponse;
-import com.irsyad.pulse.engine.model.dto.ErrorResponse;
+import com.irsyad.pulse.engine.api.dto.response.ErrorResponse;
 import com.irsyad.pulse.engine.service.InsightService;
 import jakarta.inject.Inject;
 import jakarta.validation.Valid;
