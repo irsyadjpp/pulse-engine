@@ -125,6 +125,7 @@ File: `apps/orchestrator/src/main/resources/decisions/checkout-risk.dmn`
 Decision: `AssessRisk`
 
 **Inputs:**
+
 - Age (number)
 - Occupation Class (string: CLASS_1, CLASS_2, CLASS_3, CLASS_4)
 - eKYC Confidence Score (number: 0-100)
@@ -132,11 +133,13 @@ Decision: `AssessRisk`
 - Requested Sum Insured (number)
 
 **Outputs:**
+
 - Decision (string: APPROVE, REVIEW, REJECT)
 - Reason Code (string)
 - Risk Level (string: LOW, MEDIUM, HIGH)
 
 **Rules:**
+
 1. Age < 18 or > 65 → REJECT (ERR_AGE_OUT_OF_BOUNDS, HIGH)
 2. Occupation CLASS_4 → REJECT (ERR_HIGH_RISK_OCCUPATION, HIGH)
 3. Total Active Sum Insured >= 1,000,000,000 → REJECT (ERR_OVER_INSURANCE_LIMIT, HIGH)
@@ -186,6 +189,7 @@ Setelah proses BPMN selesai (semua path: APPROVE, REVIEW, REJECT), orchestrator 
 **Channel**: `checkout-completed-out`
 
 **Konfigurasi**:
+
 ```properties
 mp.messaging.outgoing.checkout-completed-out.topic=pulse.checkout.completed.v1
 mp.messaging.outgoing.checkout-completed-out.value.serializer=org.apache.kafka.common.serialization.StringSerializer
@@ -200,6 +204,7 @@ mp.messaging.outgoing.checkout-completed-out.compression.type=snappy
 **Channel**: `checkout-completed`
 
 **Konfigurasi**:
+
 ```properties
 mp.messaging.incoming.checkout-completed.topic=pulse.checkout.completed.v1
 mp.messaging.incoming.checkout-completed.group.id=orchestrator-event-handler
@@ -213,7 +218,7 @@ mp.messaging.incoming.checkout-completed.enable.auto.commit=false
 Orchestrator mengintegrasikan dengan layanan eksternal melalui REST:
 
 | Service | Port | Purpose |
-|---------|------|---------|
+| --------- | ------ | --------- |
 | Customer Service | 7010 | Customer profile lookup |
 | Dukcapil Service | 7011 | Identity verification (e-KYC) |
 | Velocity Service | 7012 | Transaction velocity check |
@@ -803,7 +808,7 @@ curl http://localhost:7020/api/v1/insights/ORD-001
 ### Engine Schema (`pulse_engine`)
 
 | Migration | Isi |
-|-----------|-----|
+| ----------- | ----- |
 | `V1__init_pulse_schema.sql` | 4 tabel: `checkout_insight`, `checkout_timeline`, `checkout_explanation`, `customer_learning` |
 | `V2__seed.sql` | Sample data untuk testing |
 | `V3__add_insight_types.sql` | Tambahan tipe insight |
@@ -811,7 +816,7 @@ curl http://localhost:7020/api/v1/insights/ORD-001
 ## Engine REST API
 
 | Method | Endpoint | Fungsi |
-|--------|----------|--------|
+| -------- | ---------- | -------- |
 | GET | `/api/v1/insights/{checkoutId}` | Mendapatkan insight untuk sebuah checkout |
 | GET | `/api/v1/insights/{checkoutId}/timeline` | Mendapatkan timeline event |
 | GET | `/api/v1/insights/{checkoutId}/explanation` | Mendapatkan penjelasan keputusan |
@@ -832,22 +837,6 @@ mvn test
 Unit tests: `ValidationServiceTest`, `DecisionEngineTest`.
 
 Integration tests: `CheckoutProcessingIntegrationTest` (Engine), `CheckoutWorkflowTest` (Orchestrator).
-
-## Docs
-
-Lihat `docs/` untuk dokumentasi lengkap:
-
-- `00-Vision.md` - Visi produk dan identitas inti
-- `01-Capabilities.md` - Tujuh capabilities (Observe, Understand, Explain, Decide, Learn, Persist, Publish)
-- `02-Experience.md` - Pengalaman pengguna dan contoh API
-- `03-Architecture.md` - Arsitektur teknis
-- `04-BPMN.md` - Orkestrasi workflow
-- `05-Kafka.md` - Topologi event
-- `06-Decision-Engine.md` - Detail capability Decide
-- `07-Database.md` - Lapisan persistence
-- `08-Runbook.md` - Panduan operasional
-- `09-Tradeoffs.md` - Keputusan desain
-- `10-Future-Improvements.md` - Roadmap
 
 ## Future Improvement
 
