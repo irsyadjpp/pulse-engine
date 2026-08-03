@@ -1,0 +1,18 @@
+spring:
+  application:
+    name: product
+  mvc:
+    problemdetails:
+      enabled: true
+  flyway:
+    schemas: catalog
+    default-schema: catalog
+  jpa:
+    properties:
+      hibernate:
+        default_schema: catalog
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          secret: ${JWT_SECRET:pulse-engine-default-secret-change-me-in-production}
