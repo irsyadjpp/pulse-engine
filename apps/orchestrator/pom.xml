@@ -162,11 +162,6 @@
             <artifactId>quarkus-hibernate-orm-panache</artifactId>
         </dependency>
 
-        <dependency>
-            <groupId>io.quarkus</groupId>
-            <artifactId>quarkus-flyway</artifactId>
-        </dependency>
-
         <!-- CDI -->
         <dependency>
             <groupId>io.quarkus</groupId>
