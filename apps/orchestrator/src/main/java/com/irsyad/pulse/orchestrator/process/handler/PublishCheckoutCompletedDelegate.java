@@ -76,8 +76,7 @@ public class PublishCheckoutCompletedDelegate {
                 reasonCode,
                 confidenceScore,
                 0,
-                Instant.now()
-        );
+                Instant.now());
 
         try {
             Map<String, Object> payload = new HashMap<>();
@@ -86,6 +85,7 @@ public class PublishCheckoutCompletedDelegate {
             payload.put("riskAssessment", model.getRisk());
             payload.put("paymentAuthorization", model.getPayment());
             payload.put("reviewCase", model.getReviewCase());
+            payload.put("reservationReleased", model.getReservationReleased());
 
             String json = objectMapper.writeValueAsString(payload);
             producer.publish(json);
