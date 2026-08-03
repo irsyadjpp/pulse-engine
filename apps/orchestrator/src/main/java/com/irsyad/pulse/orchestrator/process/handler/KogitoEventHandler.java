@@ -38,46 +38,6 @@ public class KogitoEventHandler {
     private ProcessAuditLogRepository processAuditLogRepository;
 
     /**
-     * Handle Kafka Checkout Completed Events
-     * This triggers follow-up business processes based on decision
-     */
-    @Incoming("checkout-completed")
-    @Blocking
-    public CompletionStage<Void> handleCheckoutCompletedEvent(Message<CheckoutCompletedEvent> message) {
-        CheckoutCompletedEvent event = message.getPayload();
-        LOG.info("Received checkout.completed event via Kafka: ProcessId={}, BusinessKey={}, Decision={}", 
-                event.getProcessId(), event.getBusinessKey(), event.getDecision());
-        
-        String processId = event.getProcessId();
-        String decision = event.getDecision();
-        
-        try {
-            // Log the event reception
-            logProcessEvent(processId, "CheckoutCompletedEvent", "EVENT_RECEIVED", 
-                    "Received external event with decision: " + decision);
-            
-            // Execute business flow based on decision
-            if (Decision.APPROVE.name().equals(decision)) {
-                executePostApprovalFlow(event);
-            } else if (Decision.REVIEW.name().equals(decision)) {
-                executeReviewFlow(event);
-            } else if (Decision.REJECT.name().equals(decision)) {
-                executeRejectionFlow(event);
-            }
-            
-            // Update process status
-            updateProcessStatus(processId, "EVENT_PROCESSED", "External event processed successfully");
-            
-            return message.ack();
-            
-        } catch (Exception e) {
-            LOG.error("Error processing checkout.completed event for process: {}", processId, e);
-            updateProcessStatus(processId, "EVENT_PROCESSING_FAILED", "Error: " + e.getMessage());
-            return message.nack(e);
-        }
-    }
-
-    /**
      * Handle Kafka Checkout Retry Events
      * Re-executes the business flow for failed processes
      */

@@ -1,6 +1,7 @@
 package com.irsyad.pulse.engine.pipeline;
 
 import com.irsyad.pulse.engine.event.CheckoutCompletedEvent;
+import com.irsyad.pulse.engine.kafka.InsightGeneratedProducer;
 import com.irsyad.pulse.engine.persistence.entity.CheckoutExplanationEntity;
 import com.irsyad.pulse.engine.persistence.entity.CheckoutInsightEntity;
 import com.irsyad.pulse.engine.persistence.entity.CheckoutTimelineEntity;
@@ -48,6 +49,9 @@ public class PulseEnginePipeline {
 
     @Inject
     DecisionService decisionService;
+
+    @Inject
+    InsightGeneratedProducer insightGeneratedProducer;
 
     public void execute(CheckoutCompletedEvent event) {
         LOG.info("Executing Pulse Engine pipeline for: " + event.getBusinessKey());
@@ -301,8 +305,8 @@ public class PulseEnginePipeline {
                 Instant.now()
         );
         
-        // insightGeneratedProducer.publish(insightEvent);
-        LOG.info("Insight generated (producer disabled for debugging): " + insightEvent.getOrderId());
+        insightGeneratedProducer.publish(insightEvent);
+        LOG.info("Insight generated and published: " + insightEvent.getOrderId());
     }
 
     private String determineSeverity(UnderstandingContext context) {
