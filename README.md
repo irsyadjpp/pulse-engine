@@ -1,12 +1,257 @@
 # Pulse Engine - Platform Otomasi Bisnis
 
-**Pulse Engine adalah Platform Otomasi Bisnis yang mengorkestrasi proses bisnis, mengevaluasi keputusan, dan menyediakan kemampuan intelijen.**
+**Pulse Engine adalah Platform Otomasi Bisnis untuk underwriting asuransi yang mengorkestrasi proses bisnis, mengevaluasi keputusan, dan menyediakan kemampuan intelijen.**
 
-Pulse Engine bertransformasi dari mesin keputusan monolitik menjadi Platform Otomasi Bisnis yang selaras dengan filosofi Kogito. Platform ini terdiri dari tiga layanan terpisah:
+Pulse Engine terdiri dari dua layanan utama yang berkomunikasi melalui Kafka:
 
-- **Process Service (Kogito BPMN)**: Mengorkestrasi alur checkout sebagai proses bisnis yang dapat dieksekusi
-- **Decision Service (Kogito DMN)**: Berisi aturan bisnis (APPROVE/REVIEW/REJECT) yang dapat diubah tanpa deployment kode
-- **Intelligence Service (Quarkus)**: Mengimplementasikan kemampuan teknis (Observe, Understand, Explain, Learn, Persist, Publish)
+- **Orchestrator (Kogito BPMN + DMN)**: Mengorkestrasi alur checkout asuransi sebagai proses bisnis yang dapat dieksekusi
+- **Engine (Quarkus)**: Mengimplementasikan kemampuan teknis (Observe, Understand, Explain, Learn, Persist, Publish)
+
+---
+
+## Orchestrator - Proses Checkout Asuransi BPMN
+
+### Deskripsi Bisnis
+
+Proses checkout asuransi adalah alur bisnis yang kompleks, melibatkan validasi, verifikasi identitas, penilaian risiko underwriting, dan otorisasi pembayaran. Dengan menggunakan **Kogito BPMN** dan **DMN**, proses ini menjadi proses bisnis yang dapat dieksekusi dan dapat diubah tanpa deployment kode.
+
+### Arsitektur Bisnis
+
+```mermaid
+flowchart TD
+    Init["Customer initiates checkout"] --> Val["Validate Checkout<br/>ValidateCheckoutDelegate"]
+    Val --> Ver["Verify Identity<br/>ValidateIdentityDelegate"]
+    Ver --> Risk["Assess Risk (DMN)<br/>checkout-risk.dmn"]
+    Risk --> GW{"Risk Decision"}
+
+    GW -->|APPROVE| Pay["Authorize Payment<br/>AuthorizePaymentDelegate"]
+    GW -->|REVIEW| Review["Create Review Case<br/>CreateReviewCaseDelegate"]
+    GW -->|REJECT| Reject["Reject Checkout<br/>RejectCheckoutDelegate"]
+
+    Pay --> PayGW{"Payment Authorized?"}
+    PayGW -->|YES| Final["Finalize Checkout<br/>FinalizeCheckoutDelegate"]
+    PayGW -->|NO| RejectMerge["Reject Merge Gateway"]
+    Review --> Merge["Merge Gateway"]
+    Reject --> RejectMerge
+    RejectMerge --> RejectHandler["Reject Checkout"]
+    
+    Final --> Merge
+    Merge --> Pub["Publish Checkout Completed<br/>PublishCheckoutCompletedDelegate"]
+    Pub --> End(["End"])
+
+    style GW fill:#FFE4B5
+    style PayGW fill:#FFE4B5
+    style Risk fill:#E0FFFF
+```
+
+### Rincian Tech Stack
+
+#### 1. Bahasa Pemrograman: Java 17
+
+- **Framework**: Quarkus dengan Kogito (BPMN + DMN)
+- **Fitur yang digunakan**: Records, Pattern Matching, CDI
+- **Domain**: Personal Accident Insurance Underwriting
+
+#### 2. Framework: Kogito + Quarkus
+
+- **Core**: Jakarta EE + CDI (Contexts and Dependency Injection)
+- **BPMN**: Kogito untuk orkestrasi workflow
+- **DMN**: Kogito Decisions untuk aturan underwriting
+- **Messaging**: SmallRye Reactive Messaging (Kafka connector)
+- **Resilience**: Resilience4j (Circuit Breaker, Timeout, Bulkhead)
+- **Health**: SmallRye Health
+- **Metrics**: Micrometer (Prometheus)
+
+#### 3. Dataset: Checkout Request
+
+Format event yang diterima:
+
+```json
+{
+  "requestId": "uuid-123",
+  "traceId": "trace-456",
+  "customerId": "CUST-001",
+  "nik": "3201234567890001",
+  "fullName": "John Doe",
+  "dateOfBirth": "1990-01-01",
+  "occupation": "EMPLOYEE",
+  "merchantId": "MERCH-001",
+  "orderId": "ORD-001",
+  "amount": 250000,
+  "sumInsured": 100000000,
+  "currency": "IDR",
+  "paymentMethod": "VA",
+  "productId": "PROD-001",
+  "ipAddress": "192.168.1.1",
+  "deviceId": "device-123",
+  "channel": "MOBILE"
+}
+```
+
+### Decision Requirements Graph (DRG) DMN
+
+```mermaid
+flowchart TD
+    Input[Checkout Request<br/>Input Data] --> Age[Age<br/>from Identity]
+    Input --> Occupation[Occupation Class<br/>from Identity]
+    Input --> Confidence[eKYC Confidence Score<br/>from Identity]
+    Input --> ExistingUP[Existing Active Sum Insured<br/>from Identity]
+    Input --> RequestedUP[Requested Sum Insured<br/>from Request]
+    
+    Age --> AssessRisk[AssessRisk<br/>Decision Table]
+    Occupation --> AssessRisk
+    Confidence --> AssessRisk
+    ExistingUP --> AssessRisk
+    RequestedUP --> AssessRisk
+    
+    AssessRisk --> Decision{Decision}
+    
+    Decision -->|APPROVE| Approve[APPROVE<br/>SUCCESS_STP]
+    Decision -->|REVIEW| Review[REVIEW<br/>WARN_IDENTITY_MISMATCH / WARN_OCCUPATION_HAZARD / MANUAL_REVIEW]
+    Decision -->|REJECT| Reject[REJECT<br/>ERR_AGE_OUT_OF_BOUNDS / ERR_HIGH_RISK_OCCUPATION / ERR_OVER_INSURANCE_LIMIT]
+    
+    style Input fill:#e1f5ff
+    style AssessRisk fill:#ffe1e1
+    style Decision fill:#ffffe1
+    style Approve fill:#90EE90
+    style Review fill:#FFE4B5
+    style Reject fill:#FFB6C1
+```
+
+### Tabel Keputusan DMN
+
+File: `apps/orchestrator/src/main/resources/decisions/checkout-risk.dmn`
+
+Decision: `AssessRisk`
+
+**Inputs:**
+- Age (number)
+- Occupation Class (string: CLASS_1, CLASS_2, CLASS_3, CLASS_4)
+- eKYC Confidence Score (number: 0-100)
+- Existing Active Sum Insured (number)
+- Requested Sum Insured (number)
+
+**Outputs:**
+- Decision (string: APPROVE, REVIEW, REJECT)
+- Reason Code (string)
+- Risk Level (string: LOW, MEDIUM, HIGH)
+
+**Rules:**
+1. Age < 18 or > 65 → REJECT (ERR_AGE_OUT_OF_BOUNDS, HIGH)
+2. Occupation CLASS_4 → REJECT (ERR_HIGH_RISK_OCCUPATION, HIGH)
+3. Total Active Sum Insured >= 1,000,000,000 → REJECT (ERR_OVER_INSURANCE_LIMIT, HIGH)
+4. Confidence Score < 80 → REVIEW (WARN_IDENTITY_MISMATCH, MEDIUM)
+5. Occupation CLASS_3 → REVIEW (WARN_OCCUPATION_HAZARD, MEDIUM)
+6. Age 18-65, CLASS_1/2, Confidence >= 80, Total < 1B → APPROVE (SUCCESS_STP, LOW)
+7. Default → REVIEW (MANUAL_REVIEW, MEDIUM)
+
+### Event yang Diterbitkan
+
+Setelah proses BPMN selesai (semua path: APPROVE, REVIEW, REJECT), orchestrator menerbitkan event:
+
+**Topic**: `pulse.checkout.completed.v1`
+
+```json
+{
+  "header": {
+    "eventId": "uuid-123",
+    "eventType": "CHECKOUT_COMPLETED",
+    "correlationId": "correlation-456",
+    "traceId": "trace-789",
+    "producer": "orchestrator",
+    "createdAt": "2024-01-01T00:00:00Z",
+    "version": 1
+  },
+  "processId": "process-001",
+  "businessKey": "BK-001",
+  "checkoutId": "checkout-001",
+  "customerId": "CUST-001",
+  "amount": 250000,
+  "paymentMethod": "VA",
+  "decision": "APPROVE",
+  "riskLevel": "LOW",
+  "reviewRequired": false,
+  "priority": "P1",
+  "reasonCode": "SUCCESS_STP",
+  "confidenceScore": 85,
+  "processingTimeMs": 1200,
+  "decisionTimestamp": "2024-01-01T00:00:00Z"
+}
+```
+
+### Integrasi Kafka
+
+#### Producer (Output)
+
+**Channel**: `checkout-completed-out`
+
+**Konfigurasi**:
+```properties
+mp.messaging.outgoing.checkout-completed-out.topic=pulse.checkout.completed.v1
+mp.messaging.outgoing.checkout-completed-out.value.serializer=org.apache.kafka.common.serialization.StringSerializer
+mp.messaging.outgoing.checkout-completed-out.enable.idempotence=true
+mp.messaging.outgoing.checkout-completed-out.acks=all
+mp.messaging.outgoing.checkout-completed-out.retries=3
+mp.messaging.outgoing.checkout-completed-out.compression.type=snappy
+```
+
+#### Consumer (Input)
+
+**Channel**: `checkout-completed`
+
+**Konfigurasi**:
+```properties
+mp.messaging.incoming.checkout-completed.topic=pulse.checkout.completed.v1
+mp.messaging.incoming.checkout-completed.group.id=orchestrator-event-handler
+mp.messaging.incoming.checkout-completed.value.deserializer=org.apache.kafka.common.serialization.StringDeserializer
+mp.messaging.incoming.checkout-completed.auto.offset.reset=earliest
+mp.messaging.incoming.checkout-completed.enable.auto.commit=false
+```
+
+### External Service Integrations
+
+Orchestrator mengintegrasikan dengan layanan eksternal melalui REST:
+
+| Service | Port | Purpose |
+|---------|------|---------|
+| Customer Service | 7010 | Customer profile lookup |
+| Dukcapil Service | 7011 | Identity verification (e-KYC) |
+| Velocity Service | 7012 | Transaction velocity check |
+| Fraud Service | 7013 | Fraud detection |
+| Checkout Service | 7014 | Checkout state management |
+| Payment Service | 7015 | Payment authorization |
+| KYC Service | 7016 | KYC verification |
+| Inventory Service | 7017 | Inventory reservation/release |
+| Liveness Service | 7018 | Liveness check |
+| Policy Service | 7019 | Policy creation |
+| Merchant Service | 7020 | Merchant validation |
+| Product Service | 7022 | Product validation |
+
+Semua service calls menggunakan **Resilience4j** (Circuit Breaker, Timeout, Bulkhead) untuk fault tolerance.
+
+### REST API
+
+**Port**: 7021
+
+| Method | Endpoint | Fungsi |
+|--------|----------|--------|
+| POST | `/api/v1/checkouts` | Membuat checkout baru |
+
+### Monitoring & Observability
+
+```bash
+# Health check
+curl http://localhost:7021/q/health
+
+# Process instances
+curl http://localhost:7021/api/v1/processes
+
+# Metrics
+curl http://localhost:7021/q/metrics
+
+# OpenAPI docs
+open http://localhost:7021/q/swagger-ui
+```
 
 ---
 
@@ -29,7 +274,7 @@ graph LR
         D --> E["2. Observe<br/>Normalize Event"]
         E --> F["3. Understand<br/>Enrichment"]
         F --> G["4. Explain<br/>DRG Reasoning"]
-        G --> H["5. Decide<br/>5 Rules Engine"]
+        G --> H["5. Decide<br/>Rules Engine"]
         H --> I["6. Learn<br/>Update Customer"]
         I --> J["7. Persist"]
         J --> K["8. Publish"]
@@ -66,27 +311,31 @@ graph LR
 - **Metrics**: Micrometer (Prometheus)
 - **OpenAPI**: SmallRye OpenAPI
 
-#### 3. Dataset: Bebas (Checkout Events)
+#### 3. Dataset: Checkout Events
 
-Format event yang diterima:
+Format event yang diterima dari orchestrator:
 
 ```json
 {
   "header": {
     "eventId": "uuid-123",
-    "eventType": "checkout.completed",
-    "producer": "pulse-orchestrator",
+    "eventType": "CHECKOUT_COMPLETED",
+    "producer": "orchestrator",
     "createdAt": "2024-01-01T00:00:00Z",
     "version": 1
   },
   "processId": "process-001",
-  "businessKey": "ORD-001",
+  "businessKey": "BK-001",
+  "checkoutId": "checkout-001",
   "customerId": "CUST-001",
   "orderId": "ORD-001",
   "amount": 250000,
-  "paymentMethod": "CREDIT_CARD",
+  "paymentMethod": "VA",
   "decision": "APPROVE",
   "riskLevel": "LOW",
+  "reasonCode": "SUCCESS_STP",
+  "priority": "P1",
+  "confidenceScore": 85,
   "identityStatus": "MATCH",
   "dukcapilStatus": "VALID",
   "kycStatus": "PASSED",
@@ -108,9 +357,9 @@ Format event yang diterima:
   - `checkout_explanation` - Penjelasan keputusan
   - `customer_learning` - Pola perilaku customer
 
-### 6 Capabilities (Pipeline Processing)
+### 7 Capabilities (Pipeline Processing)
 
-Layanan ini mengimplementasikan 6 capabilities sesuai dengan arsitektur Pulse Engine:
+Layanan ini mengimplementasikan 7 capabilities sesuai dengan arsitektur Pulse Engine:
 
 #### 1. Observe
 
@@ -148,13 +397,12 @@ ExplanationContext explanation = explanationService.explain(event, context);
 #### 4. Decide
 
 ```java
-// Evaluasi 5 aturan bisnis
+// Evaluasi aturan bisnis
 String decision = decisionService.decide(context);
+// - RiskLevelRule: Berdasarkan risk level dari orchestrator
 // - AmountRule: Berdasarkan nilai amount
 // - CustomerRule: Validasi profil customer
-// - PaymentRule: Metode pembayaran
-// - VelocityRule: Deteksi anomali frekuensi
-// - RiskRule: Kombinasi faktor risiko
+// - ReviewRule: Review required flag
 // Output: APPROVED / REVIEW / REJECTED + skor keyakinan
 ```
 
@@ -191,7 +439,6 @@ emitter.send(event); // ke topic insight.generated
 public class CheckoutCompletedConsumer {
     
     @Incoming("checkout.completed")
-    @Blocking
     public void process(CheckoutCompletedEvent event) {
         pipeline.execute(event);
     }
@@ -206,7 +453,7 @@ mp.messaging.incoming.checkout.completed.group.id=pulse-engine
 mp.messaging.incoming.checkout.completed.auto.offset.reset=earliest
 mp.messaging.incoming.checkout.completed.retry-attempts=3
 mp.messaging.incoming.checkout.completed.enable-dlq=true
-mp.messaging.incoming.checkout.completed.dlq-topic=pulse.checkout.completed.v1.dlq
+mp.messaging.incoming.checkout.completed.dlq-topic=pulse.checkout.completed.dlq
 ```
 
 #### Producer (Output)
@@ -300,7 +547,7 @@ flowchart TD
     E --> F["2. Observe<br/>Normalize Event"]
     F --> G["3. Understand<br/>Enrichment"]
     G --> H["4. Explain<br/>DRG Reasoning"]
-    H --> I["5. Decide<br/>5 Rules"]
+    H --> I["5. Decide<br/>Rules Engine"]
     I --> J["6. Learn<br/>Update Customer"]
     J --> K["7. Persist<br/>PostgreSQL"]
     K --> L["8. Publish<br/>Kafka"]
@@ -323,500 +570,32 @@ flowchart TD
 
 ---
 
-## Orchestrator - Proses Checkout BPMN
-
-### Deskripsi Bisnis
-
-Proses checkout di marketplace adalah alur bisnis yang kompleks, melibatkan validasi, verifikasi identitas, otorisasi pembayaran, dan penilaian risiko. Dengan menggunakan **Kogito BPMN** dan **DMN**, proses ini menjadi proses bisnis yang dapat dieksekusi dan dapat diubah tanpa deployment kode.
-
-### Arsitektur Bisnis
-
-```mermaid
-flowchart TD
-    Init["Customer initiates checkout"] --> Val["Validate Checkout<br/>- Order ID exists<br/>- Customer ID valid<br/>- Amount > 0"]
-    Val --> Ver["Verify Identity<br/>- Identity match (Dukcapil)<br/>- KYC verification<br/>- Fraud score check"]
-    Ver --> Risk["Assess Risk (DMN)<br/>- Identity Risk<br/>- Transaction Risk<br/>- Overall Risk<br/>- Decision: APPROVE/REVIEW/REJECT"]
-    Risk --> GW{"Decision Gateway"}
-
-    GW -->|APPROVE| Pay["Payment"]
-    GW -->|REVIEW| MR["Manual Review"]
-    GW -->|REJECT| Can["Cancel"]
-
-    Pay --> FinA["Finalize"]
-    MR --> FinR["Finalize"]
-    Can --> Rel["Release Inventory"]
-
-    FinA --> PubA["Publish to Kafka"]
-    FinR --> PubR["Publish to Kafka"]
-    Rel --> EndRej(["End"])
-
-    PubA --> End(["End"])
-    PubR --> End
-    EndRej --> End
-```
-
-### Diagram BPMN (MermaidJS)
-
-```mermaid
-flowchart TD
-    Start((Start)) --> Validate[Validate Checkout<br/>ValidateCheckoutDelegate]
-    Validate --> Verify[Verify Identity<br/>VerifyIdentityDelegate]
-    Verify --> AssessRisk[Assess Risk<br/>DMN: checkout-process.dmn]
-    
-    AssessRisk --> Decision{Decision?}
-    
-    Decision -->|APPROVE| Payment[Payment<br/>PaymentDelegate]
-    Decision -->|REVIEW| Review[Human Review<br/>Manual Task]
-    Decision -->|REJECT| Cancel[Cancel Reservation<br/>Compensation]
-    
-    Payment --> Complete[Finalize<br/>CompleteCheckoutDelegate]
-    Complete --> Publish[Publish Checkout<br/>PublishCheckoutDelegate]
-    Publish --> End((End))
-    
-    Review --> CompleteReview[Finalize<br/>CompleteCheckoutDelegate]
-    CompleteReview --> PublishReview[Publish Checkout<br/>PublishCheckoutDelegate]
-    PublishReview --> End2((End))
-    
-    Cancel --> End3((End))
-    
-    style Start fill:#90EE90
-    style End fill:#FFB6C1
-    style End2 fill:#FFB6C1
-    style End3 fill:#FFB6C1
-    style Decision fill:#FFE4B5
-    style AssessRisk fill:#E0FFFF
-```
-
-### Ilustrasi BPMN dalam Kogito
-
-Proses BPMN diimplementasikan menggunakan **Kogito**, yaitu platform untuk otomasi bisnis cloud-native. Kogito memungkinkan BPMN dan DMN di-deploy sebagai layanan yang dapat dieksekusi.
-
-#### 1. Definisi Proses BPMN
-
-File: `apps/orchestrator/src/main/resources/processes/checkout-process.bpmn`
-
-```xml
-<bpmn:process id="checkout-process" name="Checkout Process" isExecutable="true">
-  <!-- Start Event -->
-  <bpmn:startEvent id="start" name="Start Checkout">
-    <bpmn:outgoing>flow_start_validate</bpmn:outgoing>
-  </bpmn:startEvent>
-  
-  <!-- Service Tasks (Business Logic) -->
-  <bpmn:serviceTask id="validateCheckout" name="Validate Checkout" 
-                    drools:taskName="ValidateCheckoutDelegate">
-    <bpmn:incoming>flow_start_validate</bpmn:incoming>
-    <bpmn:outgoing>flow_validate_identity</bpmn:outgoing>
-  </bpmn:serviceTask>
-  
-  <bpmn:serviceTask id="verifyIdentity" name="Verify Identity" 
-                    drools:taskName="VerifyIdentityDelegate">
-    <bpmn:incoming>flow_validate_identity</bpmn:incoming>
-    <bpmn:outgoing>flow_identity_assess</bpmn:outgoing>
-  </bpmn:serviceTask>
-  
-  <!-- Business Rule Task (DMN Decision) -->
-  <bpmn:businessRuleTask id="assessRisk" name="Assess Risk" 
-                         drools:dmnRef="checkout-process.dmn" 
-                         drools:dmnVersion="1.2">
-    <bpmn:extensionElements>
-      <drools:dmnResultVariable name="decision" drools:dmnOutputRef="decision" />
-      <drools:dmnResultVariable name="identityRisk" drools:dmnOutputRef="identityRisk" />
-      <drools:dmnResultVariable name="transactionRisk" drools:dmnOutputRef="transactionRisk" />
-      <drools:dmnResultVariable name="overallRisk" drools:dmnOutputRef="overallRisk" />
-    </bpmn:extensionElements>
-    <bpmn:incoming>flow_identity_assess</bpmn:incoming>
-    <bpmn:outgoing>flow_assess_gateway</bpmn:outgoing>
-  </bpmn:businessRuleTask>
-  
-  <!-- Gateway (Decision Branching) -->
-  <bpmn:exclusiveGateway id="decisionGateway" name="Decision?" 
-                         default="flow_gateway_review">
-    <bpmn:incoming>flow_assess_gateway</bpmn:incoming>
-    <bpmn:outgoing>flow_gateway_approve</bpmn:outgoing>
-    <bpmn:outgoing>flow_gateway_review</bpmn:outgoing>
-  </bpmn:exclusiveGateway>
-  
-  <!-- Sequence Flows (Conditions) -->
-  <bpmn:sequenceFlow id="flow_gateway_approve" name="APPROVE" 
-                     sourceRef="decisionGateway" targetRef="authorizePayment">
-    <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">
-      ${decision == 'APPROVE'}
-    </bpmn:conditionExpression>
-  </bpmn:sequenceFlow>
-  
-  <bpmn:sequenceFlow id="flow_gateway_review" name="REVIEW" 
-                     sourceRef="decisionGateway" targetRef="manualReview">
-    <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">
-      ${decision == 'REVIEW'}
-    </bpmn:conditionExpression>
-  </bpmn:sequenceFlow>
-  
-  <!-- End Event -->
-  <bpmn:endEvent id="endSuccess" name="End">
-    <bpmn:incoming>flow_publish_end</bpmn:incoming>
-  </bpmn:endEvent>
-</bpmn:process>
-```
-
-#### 2. Tabel Keputusan DMN
-
-File: `apps/orchestrator/src/main/resources/decisions/checkout-process.dmn`
-
-```xml
-<dmn:decision id="Decision_CheckoutDecision" name="CheckoutDecision">
-  <dmn:description>Makes final checkout decision based on overall risk assessment</dmn:description>
-  <dmn:variable id="Variable_CheckoutDecision" name="CheckoutDecision" 
-                typeRef="tns:tCheckoutDecision"/>
-  <dmn:informationRequirement id="InfoReq_CheckoutDecision_OverallRisk">
-    <dmn:requiredDecision href="#Decision_OverallRisk"/>
-  </dmn:informationRequirement>
-  <dmn:decisionTable id="DecisionTable_CheckoutDecision" 
-                     hitPolicy="UNIQUE" 
-                     preferredOrientation="Rule-as-Row">
-    <dmn:input id="Input_OverallRisk">
-      <dmn:inputExpression id="InputExpr_OverallRisk" typeRef="string">
-        <dmn:text>OverallRisk.overallRisk</dmn:text>
-      </dmn:inputExpression>
-    </dmn:input>
-    <dmn:output id="Output_Decision" name="decision"/>
-    
-    <!-- Rules -->
-    <dmn:rule id="Rule_Checkout_Low">
-      <dmn:inputEntry><dmn:text>"LOW"</dmn:text></dmn:inputEntry>
-      <dmn:outputEntry><dmn:text>"APPROVE"</dmn:text></dmn:outputEntry>
-    </dmn:rule>
-    
-    <dmn:rule id="Rule_Checkout_Medium">
-      <dmn:inputEntry><dmn:text>"MEDIUM"</dmn:text></dmn:inputEntry>
-      <dmn:outputEntry><dmn:text>"REVIEW"</dmn:text></dmn:outputEntry>
-    </dmn:rule>
-    
-    <dmn:rule id="Rule_Checkout_High">
-      <dmn:inputEntry><dmn:text>"HIGH"</dmn:text></dmn:inputEntry>
-      <dmn:outputEntry><dmn:text>"REJECT"</dmn:text></dmn:outputEntry>
-    </dmn:rule>
-  </dmn:decisionTable>
-</dmn:decision>
-```
-
-### Layanan yang Digunakan
-
-#### 1. ValidateCheckoutDelegate
-
-```java
-@Component
-public class ValidateCheckoutDelegate {
-    
-    public void execute(CheckoutProcessModel model) {
-        // Validasi aturan bisnis:
-        // - Order ID tidak null/empty
-        // - Customer ID valid
-        // - Amount > 0
-        // - Metode pembayaran valid
-        
-        if (model.getOrderId() == null || model.getOrderId().isEmpty()) {
-            throw new IllegalArgumentException("Order ID is required");
-        }
-        
-        if (model.getAmount() <= 0) {
-            throw new IllegalArgumentException("Amount must be greater than 0");
-        }
-    }
-}
-```
-
-#### 2. VerifyIdentityDelegate
-
-```java
-@Component
-public class VerifyIdentityDelegate {
-    
-    public void execute(CheckoutProcessModel model) {
-        // Integrasi dengan layanan eksternal:
-        // - Dukcapil (verifikasi identitas)
-        // - KYC (Know Your Customer)
-        // - Deteksi fraud
-        
-        // Memanggil microservices lain melalui REST
-        // Mengisi field status di model
-        
-        model.setIdentityStatus(identityResponse.getStatus());
-        model.setDukcapilStatus(dukcapilResponse.getStatus());
-        model.setKycStatus(kycResponse.getStatus());
-    }
-}
-```
-
-#### 3. PaymentDelegate
-
-```java
-@Component
-public class PaymentDelegate {
-    
-    public void execute(CheckoutProcessModel model) {
-        // Proses pembayaran:
-        // - Authorize pembayaran dengan payment gateway
-        // - Capture/Reserve dana
-        // - Perbarui status pembayaran
-        
-        PaymentResponse response = paymentService.authorize(
-            model.getOrderId(), 
-            model.getAmount(), 
-            model.getPaymentMethod()
-        );
-        
-        model.setPaymentStatus(response.getStatus());
-    }
-}
-```
-
-#### 4. CompleteCheckoutDelegate
-
-```java
-@Component
-public class CompleteCheckoutDelegate {
-    
-    public void execute(ProcessInstanceEntity entity) {
-        // Finalisasi checkout:
-        // - Perbarui inventory
-        // - Generate invoice
-        // - Kirim konfirmasi
-        // - Publikasi event ke Kafka
-        
-        CheckoutCompletedEvent event = CheckoutCompletedEvent.builder()
-            .eventId(UUID.randomUUID())
-            .processId(entity.getProcessId())
-            .businessKey(entity.getBusinessKey())
-            .orderId(entity.getOrderId())
-            .customerId(entity.getCustomerId())
-            .amount(entity.getAmount())
-            .paymentMethod(entity.getPaymentMethod())
-            .decision(entity.getDecision())
-            .riskLevel(entity.getRiskLevel())
-            .build();
-        
-        // Publikasi ke Kafka
-        kafkaTemplate.send("pulse.checkout.completed.v1", event);
-    }
-}
-```
-
-#### 5. PublishCheckoutDelegate
-
-```java
-@Component
-public class PublishCheckoutDelegate {
-    
-    public void execute(CheckoutProcessModel model) {
-        // Publikasi event ke Kafka setelah proses BPMN selesai
-        // Event ini akan dikonsumsi oleh Pulse Engine
-        
-        CheckoutCompletedEvent event = buildEvent(model);
-        kafkaTemplate.send(KafkaTopics.CHECKOUT_COMPLETED, event);
-    }
-}
-```
-
-### Kode Test dengan Kogito
-
-#### Contoh Integration Test
-
-```java
-@QuarkusTest
-public class CheckoutWorkflowTest {
-    
-    @Inject
-    CheckoutProcess checkoutProcess;
-    
-    @Test
-    public void testCheckoutApprovedFlow() {
-        // 1. Mulai proses BPMN
-        CheckoutProcessModel model = new CheckoutProcessModel();
-        model.setOrderId("ORD-001");
-        model.setCustomerId("CUST-001");
-        model.setAmount(250000);
-        model.setPaymentMethod("CREDIT_CARD");
-        
-        ProcessInstance instance = checkoutProcess.startProcess(model);
-        
-        // 2. Verifikasi proses dimulai
-        assertEquals(ProcessInstance.STATE_ACTIVE, instance.status());
-        
-        // 3. Selesaikan service tasks (simulasi)
-        // - ValidateCheckoutDelegate
-        // - VerifyIdentityDelegate
-        // - AssessRisk (evaluasi DMN)
-        
-        // 4. Verifikasi keputusan DMN
-        assertEquals("APPROVE", model.getDecision());
-        
-        // 5. Selesaikan proses
-        checkoutProcess.complete(instance.id());
-        
-        // 6. Verifikasi status akhir
-        ProcessInstance finalInstance = checkoutProcess.processInstance(instance.id());
-        assertEquals(ProcessInstance.STATE_COMPLETED, finalInstance.status());
-    }
-    
-    @Test
-    public void testCheckoutReviewFlow() {
-        // Test skenario REVIEW
-        CheckoutProcessModel model = new CheckoutProcessModel();
-        model.setOrderId("ORD-002");
-        model.setCustomerId("CUST-002");
-        model.setAmount(75000000);  // Amount tinggi
-        model.setPaymentMethod("VA");
-        
-        ProcessInstance instance = checkoutProcess.startProcess(model);
-        
-        // Simulasi evaluasi DMN
-        // IdentityRisk: HIGH
-        // TransactionRisk: MEDIUM
-        // OverallRisk: MEDIUM
-        // Decision: REVIEW
-        
-        assertEquals("REVIEW", model.getDecision());
-    }
-}
-```
-
-### Visualisasi BPMN & DMN
-
-#### Alur Proses BPMN (Representasi SVG)
-
-Karena konversi XML ke SVG memerlukan tool khusus seperti **bpmn.io**, berikut adalah representasi MermaidJS dari alur BPMN:
-
-```mermaid
-stateDiagram-v2
-    [*] --> StartCheckout: Customer initiates checkout
-    StartCheckout --> ValidateCheckout: BPMN Start Event
-    ValidateCheckout --> VerifyIdentity: Service Task
-    VerifyIdentity --> AssessRisk: Business Rule Task (DMN)
-    
-    AssessRisk --> DecisionGateway: Exclusive Gateway
-    
-    DecisionGateway --> Payment: APPROVE
-    DecisionGateway --> ManualReview: REVIEW
-    DecisionGateway --> CancelReservation: REJECT
-    
-    Payment --> CompleteCheckout: Service Task
-    CompleteCheckout --> PublishCheckout: Service Task
-    PublishCheckout --> End: BPMN End Event
-    
-    ManualReview --> CompleteReview: User Task
-    CompleteReview --> PublishReview: Service Task
-    PublishReview --> End2: BPMN End Event
-    
-    CancelReservation --> End3: BPMN End Event
-    
-    End --> [*]
-    End2 --> [*]
-    End3 --> [*]
-```
-
-#### Decision Requirements Graph (DRG) DMN
-
-```mermaid
-flowchart TD
-    Input[CheckoutContext<br/>Input Data] --> IdentityRisk[IdentityRisk<br/>Decision]
-    Input --> TransactionRisk[TransactionRisk<br/>Decision]
-    Input --> OverallRisk[OverallRisk<br/>Decision]
-    
-    IdentityRisk --> OverallRisk
-    TransactionRisk --> OverallRisk
-    
-    OverallRisk --> CheckoutDecision[CheckoutDecision<br/>Final Decision]
-    
-    CheckoutDecision -->|LOW| Approve[APPROVE]
-    CheckoutDecision -->|MEDIUM| Review[REVIEW]
-    CheckoutDecision -->|HIGH| Reject[REJECT]
-    
-    style Input fill:#e1f5ff
-    style IdentityRisk fill:#ffe1e1
-    style TransactionRisk fill:#ffe1e1
-    style OverallRisk fill:#ffffe1
-    style CheckoutDecision fill:#e1ffe1
-    style Approve fill:#90EE90
-    style Review fill:#FFE4B5
-    style Reject fill:#FFB6C1
-```
-
-### Nilai Bisnis
-
-1. **Agility**: Aturan bisnis dapat diubah tanpa deploy kode (DMN)
-2. **Visibility**: Alur proses terlihat jelas dalam diagram BPMN
-3. **Traceability**: Setiap langkah dalam proses tercatat di database
-4. **Flexibility**: Proses dapat diubah tanpa mengubah layanan
-5. **Governance**: Business analysts dapat mengelola aturan dan proses
-
-### Keunggulan Menggunakan Kogito
-
-1. **Executable BPMN 2.0**: Model proses langsung dijalankan
-2. **DMN Integration**: Tabel keputusan terintegrasi dengan proses
-3. **Spring Boot Native**: Tidak memerlukan application server
-4. **Cloud Ready**: Dioptimalkan untuk Kubernetes/OpenShift
-5. **Hot Deployment**: Perubahan BPMN/DMN langsung berlaku tanpa restart
-
-### Cara Menjalankan
-
-```bash
-# 1. Start infrastructure
-docker compose up -d
-
-# 2. Run Orchestrator
-cd apps/orchestrator && mvn quarkus:dev
-
-# 3. Trigger checkout via REST
-curl -X POST http://localhost:8080/api/v1/checkouts \
-  -H "Content-Type: application/json" \
-  -d '{"orderId":"ORD-001","customerId":"CUST-001","amount":250000,"paymentMethod":"CREDIT_CARD"}'
-
-# 4. Monitor process via Kafdrop
-open http://localhost:9000
-```
-
-### Monitoring & Observability
-
-```bash
-# Health check
-curl http://localhost:8080/q/health
-
-# Process instances
-curl http://localhost:8080/api/v1/processes
-
-# Metrics
-curl http://localhost:8080/q/metrics
-
-# OpenAPI docs
-open http://localhost:8080/q/swagger-ui
-```
-
----
-
 ## Ringkasan Arsitektur Keseluruhan
 
 ```mermaid
 flowchart TB
-    Client[Client/Mobile App] -->|REST API| Orchestrator[Orchestrator<br/>:8080]
+    Client[Client/Mobile App] -->|REST API| Orchestrator[Orchestrator<br/>:7021]
     
-    Orchestrator -->|1. Start| BPMN[BPMN Process<br/>checkout-process.bpmn]
+    Orchestrator -->|1. Start| BPMN[BPMN Process<br/>checkout-process.bpmn2]
     BPMN -->|2. Validate| Validate[ValidateCheckoutDelegate]
-    BPMN -->|3. Verify| Verify[VerifyIdentityDelegate]
-    BPMN -->|4. Assess| DMN[DMN Decision<br/>checkout-process.dmn]
+    BPMN -->|3. Verify| Verify[ValidateIdentityDelegate]
+    BPMN -->|4. Assess| DMN[DMN Decision<br/>checkout-risk.dmn]
     
-    DMN -->|5. Decision| Gateway{Decision Gateway}
+    DMN -->|5. Decision| Gateway{Risk Gateway}
     
-    Gateway -->|APPROVE| Payment[PaymentDelegate]
-    Gateway -->|REVIEW| Review[Manual Review]
-    Gateway -->|REJECT| Cancel[Cancel Reservation]
+    Gateway -->|APPROVE| Pay[AuthorizePaymentDelegate]
+    Gateway -->|REVIEW| Review[CreateReviewCaseDelegate]
+    Gateway -->|REJECT| Reject[RejectCheckoutDelegate]
     
-    Payment --> Complete[CompleteCheckoutDelegate]
-    Complete --> Publish[PublishCheckoutDelegate]
+    Pay --> PayGW{Payment Authorized?}
+    PayGW -->|YES| Final[FinalizeCheckoutDelegate]
+    PayGW -->|NO| Reject
+    
+    Final --> Publish[PublishCheckoutCompletedDelegate]
     
     Publish -->|6. Publish| Kafka1[Kafka<br/>pulse.checkout.completed.v1]
     
-    Kafka1 -->|7. Consume| Engine[Pulse Engine<br/>:8084]
+    Kafka1 -->|7. Consume| Engine[Pulse Engine<br/>:7020]
     
     Engine -->|8. Observe| Observe[Observation]
     Engine -->|9. Understand| Understand[Enrichment]
@@ -829,10 +608,9 @@ flowchart TB
     Kafka2 -->|15. Consume| Analytics[Analytics Service]
     Kafka2 -->|16. Consume| Notification[Notification Service]
     
-    Review --> Kafka1
-    Cancel --> End1((End))
-    Complete --> End2((End))
-    Publish --> End3((End))
+    Review --> End1((End))
+    Reject --> End2((End))
+    Final --> End3((End))
     
     style Orchestrator fill:#e1f5ff
     style Engine fill:#ffe1e1
@@ -844,7 +622,7 @@ flowchart TB
 ### Poin-Poin Utama
 
 1. **Separation of Concerns**:
-   - Orchestrator: Proses bisnis & keputusan
+   - Orchestrator: Proses bisnis & keputusan underwriting (DMN)
    - Engine: Intelijen & analitik
 
 2. **Keselarasan Teknologi**:
@@ -856,12 +634,12 @@ flowchart TB
    - Decoupling antar layanan
 
 4. **Alur Data**:
-   - Input: REST API → BPMN → Kafka
-   - Processing: Pipeline engine (6 capabilities)
+   - Input: REST API → BPMN → DMN → Kafka
+   - Processing: Pipeline engine (7 capabilities)
    - Output: Kafka → Analytics/Notification + PostgreSQL
 
 5. **Nilai Bisnis**:
-   - Pengambilan keputusan real-time
+   - Pengambilan keputusan underwriting real-time
    - Audit trail lengkap
    - Pembelajaran berkelanjutan
    - AI yang dapat dijelaskan (Explainable AI)
@@ -876,7 +654,7 @@ flowchart TB
 docker compose up -d
 ```
 
-Menjalankan: Kafka (:9092), Kafdrop UI (:9000), PostgreSQL (:5432), pgAdmin (:5050).
+Menjalankan: Kafka (:7000), PostgreSQL (:7002), Redis (:7001), Kafdrop UI (:9000).
 
 ### 2. Build
 
@@ -899,15 +677,31 @@ cd apps/engine && mvn quarkus:dev
 ### 5. Trigger Checkout
 
 ```bash
-curl -X POST http://localhost:8080/api/v1/checkouts \
+curl -X POST http://localhost:7021/api/v1/checkouts \
   -H "Content-Type: application/json" \
-  -d '{"orderId":"ORD-001","customerId":"CUST-001","amount":250000,"paymentMethod":"CREDIT_CARD"}'
+  -d '{
+    "customerId":"CUST-001",
+    "nik":"3201234567890001",
+    "fullName":"John Doe",
+    "dateOfBirth":"1990-01-01",
+    "occupation":"EMPLOYEE",
+    "merchantId":"MERCH-001",
+    "orderId":"ORD-001",
+    "amount":250000,
+    "sumInsured":100000000,
+    "currency":"IDR",
+    "paymentMethod":"VA",
+    "productId":"PROD-001",
+    "ipAddress":"192.168.1.1",
+    "deviceId":"device-123",
+    "channel":"MOBILE"
+  }'
 ```
 
 ### 6. Get Insight Result
 
 ```bash
-curl http://localhost:8084/api/v1/insights/ORD-001
+curl http://localhost:7020/api/v1/insights/ORD-001
 ```
 
 Response berisi keputusan, confidence, penjelasan, faktor, dan pola pembelajaran.
@@ -917,14 +711,14 @@ Response berisi keputusan, confidence, penjelasan, faktor, dan pola pembelajaran
 | Module              | Path              | Port  | Tanggung Jawab                              |
 |---------------------|-------------------|-------|----------------------------------------------|
 | `shared/model`      | `shared/model`     | —     | Kontrak bersama (DTO, Events, Enums, VOs)   |
-| `apps/orchestrator` | `apps/orchestrator`| 8080  | Orkestrasi BPMN + layanan keputusan DMN + publish `checkout.completed` |
-| `apps/engine`       | `apps/engine`      | 8084  | Kemampuan intelijen (Observe, Understand, Explain, Learn, Persist, Publish) |
+| `apps/orchestrator` | `apps/orchestrator`| 7021  | Orkestrasi BPMN + layanan keputusan DMN + publish `checkout.completed` |
+| `apps/engine`       | `apps/engine`      | 7020  | Kemampuan intelijen (Observe, Understand, Explain, Decide, Learn, Persist, Publish) |
 
 ## Prerequisites
 
 - **Java 17+**
 - **Maven 3.9+**
-- **Docker** (untuk Kafka + PostgreSQL)
+- **Docker** (untuk Kafka + PostgreSQL + Redis)
 - **Docker Compose**
 
 ## Run Project
@@ -935,7 +729,7 @@ Response berisi keputusan, confidence, penjelasan, faktor, dan pola pembelajaran
 docker compose up -d
 ```
 
-Menjalankan: Kafka (:9092), Kafdrop UI (:9000), PostgreSQL (:5432), pgAdmin (:5050).
+Menjalankan: Kafka (:7000), PostgreSQL (:7002), Redis (:7001), Kafdrop UI (:9000), pgAdmin (:5050).
 
 ### 2. Build
 
@@ -960,37 +754,64 @@ cd apps/orchestrator && mvn quarkus:dev
 ### 5. Trigger Checkout
 
 ```bash
-curl -X POST http://localhost:8080/api/v1/checkouts \
+curl -X POST http://localhost:7021/api/v1/checkouts \
   -H "Content-Type: application/json" \
-  -d '{"orderId":"ORD-001","customerId":"CUST-001","amount":250000,"paymentMethod":"CREDIT_CARD"}'
+  -d '{
+    "customerId":"CUST-001",
+    "nik":"3201234567890001",
+    "fullName":"John Doe",
+    "dateOfBirth":"1990-01-01",
+    "occupation":"EMPLOYEE",
+    "merchantId":"MERCH-001",
+    "orderId":"ORD-001",
+    "amount":250000,
+    "sumInsured":100000000,
+    "currency":"IDR",
+    "paymentMethod":"VA",
+    "productId":"PROD-001",
+    "ipAddress":"192.168.1.1",
+    "deviceId":"device-123",
+    "channel":"MOBILE"
+  }'
 ```
 
 ### 6. Get Insight
 
 ```bash
-curl http://localhost:8084/api/v1/insights/ORD-001
+curl http://localhost:7020/api/v1/insights/ORD-001
 ```
 
 ## Kafka Topics
 
-| Topic                    | Partitions | Producer     | Consumer   | Retention | Capability |
-|--------------------------|:----------:|--------------|------------|:---------:|------------|
-| `checkout.completed`      | 6 | Orchestrator | Engine | 7d  | Process + Decision |
-| `decision.completed`      | 6 | Engine       | Analytics/Notification | 30d | Intelligence |
-| `insight.generated`       | 3 | Engine       | Analytics  | 30d | Intelligence |
-| `checkout.completed.dlq`   | 1 | Engine       | Operations | 30d | - |
+| Topic                         | Partitions | Producer     | Consumer        | Retention | Capability |
+|-------------------------------|:----------:|--------------|-----------------|:---------:|------------|
+| `pulse.checkout.completed.v1`   | 6 | Orchestrator | Engine          | 7d  | Process + Decision |
+| `pulse.checkout.completed.retry` | 6 | Engine       | Engine          | 1d  | Retry Queue |
+| `pulse.checkout.completed.dlq`   | 1 | Engine       | Operations      | 30d | Dead Letter Queue |
+| `pulse.insight.generated.v1`     | 3 | Engine       | Analytics       | 30d | Intelligence |
+| `pulse.insight.generated.dlq`    | 1 | Engine       | Operations      | 30d | Dead Letter Queue |
 
 ## Database (Flyway)
 
+### Orchestrator Schema (`orchestrator`)
+
 | Migration | Isi |
 |-----------|-----|
-| `V1__init_pulse_schema.sql` | 7 tabel: `checkout_request`, `decision_result`, `insight`, `event_store`, `process_audit`, `rule_execution`, `processing_error` |
-| `V2__seed.sql` | 5 checkout sample (2 APPROVED, 2 REVIEW, 1 REJECTED) |
+| `V1__init_orchestrator_schema.sql` | Schema untuk proses orchestrator |
+| `V2__fix_orchestrator_schema.sql` | Perbaikan schema |
+
+### Engine Schema (`pulse_engine`)
+
+| Migration | Isi |
+|-----------|-----|
+| `V1__init_pulse_schema.sql` | 4 tabel: `checkout_insight`, `checkout_timeline`, `checkout_explanation`, `customer_learning` |
+| `V2__seed.sql` | Sample data untuk testing |
+| `V3__add_insight_types.sql` | Tambahan tipe insight |
 
 ## Engine REST API
 
 | Method | Endpoint | Fungsi |
-| -------- | ----------------------------------- | ------------------------------ |
+|--------|----------|--------|
 | GET | `/api/v1/insights/{checkoutId}` | Mendapatkan insight untuk sebuah checkout |
 | GET | `/api/v1/insights/{checkoutId}/timeline` | Mendapatkan timeline event |
 | GET | `/api/v1/insights/{checkoutId}/explanation` | Mendapatkan penjelasan keputusan |
@@ -1017,7 +838,7 @@ Integration tests: `CheckoutProcessingIntegrationTest` (Engine), `CheckoutWorkfl
 Lihat `docs/` untuk dokumentasi lengkap:
 
 - `00-Vision.md` - Visi produk dan identitas inti
-- `01-Capabilities.md` - Lima capabilities (Observe, Understand, Decide, Explain, Learn)
+- `01-Capabilities.md` - Tujuh capabilities (Observe, Understand, Explain, Decide, Learn, Persist, Publish)
 - `02-Experience.md` - Pengalaman pengguna dan contoh API
 - `03-Architecture.md` - Arsitektur teknis
 - `04-BPMN.md` - Orkestrasi workflow
