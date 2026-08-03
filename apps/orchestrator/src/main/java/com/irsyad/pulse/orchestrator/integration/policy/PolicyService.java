@@ -5,6 +5,7 @@ import org.eclipse.microprofile.faulttolerance.CircuitBreaker;
 import org.eclipse.microprofile.faulttolerance.Fallback;
 import org.eclipse.microprofile.faulttolerance.Timeout;
 import org.eclipse.microprofile.rest.client.inject.RegisterRestClient;
+import org.eclipse.microprofile.rest.client.inject.RestClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -24,6 +25,7 @@ public class PolicyService {
     private static final Logger LOG = LoggerFactory.getLogger(PolicyService.class);
 
     @Inject
+    @RestClient
     private PolicyRestClient policyRestClient;
 
     @CircuitBreaker(failureRatio = 0.5, delay = 30000, requestVolumeThreshold = 5)
