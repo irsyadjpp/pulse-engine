@@ -56,15 +56,19 @@ Domain Model mengikuti prinsip berikut.
 
 # 4. Aggregate Overview
 
-Product Catalog terdiri dari dua Aggregate utama.
+Product Catalog terdiri dari tiga Aggregate utama.
 
 ```text
 InsuranceCompany
 
 Product
+
+ProductVersion
 ```
 
 Audit dikelola sebagai aggregate terpisah.
+
+> **Keputusan (Resolved):** ProductVersion merupakan **Aggregate terpisah** yang merepresentasikan immutable snapshot, bukan sekadar tabel snapshot. Lihat Section 27.
 
 ---
 
@@ -77,9 +81,13 @@ class InsuranceCompany
 
 class Product
 
+class ProductVersion
+
 class AuditHistory
 
 InsuranceCompany "1" --> "*" Product
+
+Product "1" --> "*" ProductVersion
 
 Product ..> AuditHistory
 ```
@@ -127,7 +135,36 @@ Owned Entity
 
 ProductVersion bukan child entity.
 
-ProductVersion merupakan aggregate snapshot.
+ProductVersion merupakan aggregate terpisah.
+
+---
+
+## ProductVersion Aggregate
+
+Aggregate Root
+
+```
+ProductVersion
+```
+
+Owned Entity
+
+- Coverage
+- Benefit
+- Exclusion
+- Eligibility
+- PremiumConfiguration
+- ProductDocument
+
+Immutable.
+
+Setelah dibuat:
+
+- tidak pernah diupdate
+- tidak pernah dihapus
+- hanya dapat dibaca
+
+Quote Service membaca ProductVersion, bukan Product Draft.
 
 ---
 
@@ -793,17 +830,31 @@ REST
 
 ---
 
-# 27. Requires Functional Clarification
+# 27. Functional Clarification — Resolved
 
-Item berikut tidak dapat diturunkan langsung dari BRD/FSD.
+Item berikut sebelumnya berstatus *Requires Functional Clarification* dan telah diputuskan berdasarkan DDD, enterprise insurance, Product Catalog sebagai Single Source of Truth, serta BRD/FSD/TSD.
 
-| Item | Status |
-| ------ | -------- |
-| Apakah ProductVersion merupakan Aggregate terpisah atau snapshot persistence? | Requires Functional Clarification |
-| Mekanisme penyimpanan ProductDocument (Object Storage atau metadata saja) | Requires Functional Clarification |
-| Retention AuditHistory | Requires Functional Clarification |
-| Domain Event dipublikasikan keluar service atau hanya internal | Requires Functional Clarification |
-| Apakah Company dapat memiliki Product tanpa status ACTIVE | Requires Functional Clarification |
+| Item | Keputusan | Status |
+| ------ | ---------- | -------- |
+| Apakah ProductVersion merupakan Aggregate terpisah atau snapshot persistence? | **ProductVersion adalah Aggregate terpisah yang merepresentasikan immutable snapshot.** Mempunyai identity (`ProductVersionId`) dan business meaning. Setelah publish: tidak pernah diupdate, tidak pernah dihapus, hanya dapat dibaca. Quote Service membaca ProductVersion, bukan Product Draft. | **Resolved** |
+| Mekanisme penyimpanan ProductDocument (Object Storage atau metadata saja) | **Product Catalog hanya menyimpan metadata dokumen.** File fisik disimpan di Object Storage (MinIO, S3, Azure Blob, GCS). Database menyimpan `document_name`, `document_type`, `mime_type`, `storage_key`, `checksum`, `file_size`, `uploaded_at` — bukan `bytea`/`blob`. | **Resolved** |
+| Retention AuditHistory | **Audit bersifat append-only.** Tidak boleh dihapus maupun diupdate oleh aplikasi. Retention mengikuti kebijakan organisasi, default enterprise insurance: **minimum 7 tahun** atau sesuai regulasi OJK dan kebijakan perusahaan. | **Resolved** |
+| Domain Event dipublikasikan keluar service atau hanya internal | **Domain Event selalu dibuat secara internal** (mis. `ProductPublished`, `ProductArchived`, `CoverageReplaced`). **Integration Event dipublikasikan keluar service hanya jika dibutuhkan** oleh consumer atau BRD diperluas, melalui REST atau Kafka. | **Resolved** |
+| Apakah Company dapat memiliki Product tanpa status ACTIVE | **Tidak.** Product hanya boleh dibuat apabila Company berstatus **ACTIVE**. Company INACTIVE menolak pembuatan Product baru, namun ProductVersion yang sudah Published tetap valid (tidak otomatis hilang) karena Quote, Proposal, dan Historical Report masih membutuhkannya. | **Resolved** |
+
+---
+
+# 27a. Business Rules Tambahan
+
+Berdasarkan keputusan di atas, ditambahkan Business Rule berikut ke BRD/FSD/TSD.
+
+| Rule ID | Business Rule |
+| ------- | ------------- |
+| BR-021 | Product hanya dapat dibuat apabila Insurance Company berstatus **ACTIVE**. |
+| BR-022 | Perubahan Company menjadi **INACTIVE** tidak mengubah ProductVersion yang telah **Published**. |
+| BR-023 | ProductDocument hanya menyimpan **metadata**. Binary document disimpan di **Object Storage**. |
+| BR-024 | Audit History bersifat **append-only**. Tidak boleh diubah. Tidak boleh dihapus oleh aplikasi. |
+| BR-025 | Publish Product harus membuat **Aggregate ProductVersion** yang **immutable**. |
 
 ---
 

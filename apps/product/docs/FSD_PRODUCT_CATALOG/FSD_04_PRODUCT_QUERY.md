@@ -120,13 +120,13 @@ Parameter yang dapat digunakan:
 - Product Name
 - Product Category
 - Product Status
-- Effective Date
+- Effective Date (termasuk Effective Date Range, lihat QD-05)
 
 **Catatan**
 
 BRD hanya mendefinisikan adanya Product Search tanpa menentukan parameter pencarian.
 
-Parameter di atas merupakan **Assumption** untuk mendukung kebutuhan operasional dan perlu dikonfirmasi oleh Business Owner.
+Parameter di atas merupakan keputusan desain untuk mendukung kebutuhan operasional (lihat QD-01 s.d. QD-06).
 
 ---
 
@@ -293,9 +293,7 @@ Dapat membaca
 - Published
 - Archived
 
-karena kebutuhan analisis.
-
-**Assumption:** BRD tidak mendefinisikan hak akses Reporting terhadap seluruh status produk. Perilaku ini perlu divalidasi bersama Business Owner.
+karena kebutuhan analisis (lihat QD-04).
 
 ---
 
@@ -463,32 +461,19 @@ GET /api/v1/products/{productId}/versions/{version}
 
 ```mermaid
 sequenceDiagram
-
-actor Consumer
-
-participant API
-
-participant Query Service
-
-participant Repository
-
-database Database
-
-Consumer->>API: GET /products
-
-API->>Query Service: Search Product
-
-Query Service->>Repository: Find Product
-
-Repository->>Database: SELECT
-
-Database-->>Repository: Result
-
-Repository-->>Query Service: Product List
-
-Query Service-->>API: Response
-
-API-->>Consumer: Product List
+    actor Consumer
+    participant API
+    participant QS[Query Service]
+    participant Repository
+    participant DB[(Database)]
+    Consumer->>API: GET /products
+    API->>QS: Search Product
+    QS->>Repository: Find Product
+    Repository->>DB: SELECT
+    DB-->>Repository: Result
+    Repository-->>QS: Product List
+    QS-->>API: Response
+    API-->>Consumer: Product List
 ```
 
 ---
@@ -497,32 +482,19 @@ API-->>Consumer: Product List
 
 ```mermaid
 sequenceDiagram
-
-actor Marketplace
-
-participant API
-
-participant Query Service
-
-participant Repository
-
-database Database
-
-Marketplace->>API: GET Product Detail
-
-API->>Query Service: Find Product
-
-Query Service->>Repository: Query Aggregate
-
-Repository->>Database: SELECT
-
-Database-->>Repository: Product Aggregate
-
-Repository-->>Query Service: Product
-
-Query Service-->>API: Response
-
-API-->>Marketplace: Product Detail
+    actor Marketplace
+    participant API
+    participant QS[Query Service]
+    participant Repository
+    participant DB[(Database)]
+    Marketplace->>API: GET Product Detail
+    API->>QS: Find Product
+    QS->>Repository: Query Aggregate
+    Repository->>DB: SELECT
+    DB-->>Repository: Product Aggregate
+    Repository-->>QS: Product
+    QS-->>API: Response
+    API-->>Marketplace: Product Detail
 ```
 
 ---
@@ -592,16 +564,66 @@ Authorization
 
 ---
 
-# 17. Open Items / Business Clarification
+# 17. Query Design Decisions
 
-| ID | Question |
-| ---- | ---------- |
-| OI-01 | Apakah Product Search mendukung full-text search atau exact match? |
-| OI-02 | Apakah pencarian harus mendukung multi-keyword? |
-| OI-03 | Apakah Product Listing memiliki default sorting? |
-| OI-04 | Apakah Reporting dapat mengakses seluruh Product Version termasuk Draft? |
-| OI-05 | Apakah API mendukung pencarian berdasarkan Effective Date Range? |
-| OI-06 | Apakah Marketplace memerlukan endpoint khusus untuk katalog publik atau menggunakan endpoint Product Search yang sama? |
+Selama penyusunan FSD dilakukan beberapa keputusan desain untuk memastikan perilaku Product Query konsisten dan sesuai dengan ruang lingkup Product Catalog.
+
+| ID    | Decision                                                                                                                       | Status   |
+| ----- | ------------------------------------------------------------------------------------------------------------------------------ | -------- |
+| QD-01 | Product Search mendukung **Exact Match** untuk business identifier dan **Partial Match (case-insensitive)** untuk Product Name | Approved |
+| QD-02 | Product Search mendukung pencarian **multi-keyword**                                                                           | Approved |
+| QD-03 | Default sorting menggunakan **`updated_at DESC`**                                                                              | Approved |
+| QD-04 | Reporting dapat mengakses seluruh Product Version sesuai hak akses, termasuk **Draft**                                         | Approved |
+| QD-05 | Product Search mendukung filter berdasarkan **Effective Date Range** (`effectiveDateFrom` / `effectiveDateTo`)                 | Approved |
+| QD-06 | Marketplace menggunakan **endpoint katalog publik yang terpisah** dari endpoint Back Office                                    | Approved |
+
+## 17.1 Back Office API vs Public Catalog API
+
+### Back Office API
+
+```text
+GET /api/v1/products
+```
+
+Digunakan oleh:
+
+- Product Administrator
+- Business User
+- Reporting
+
+Dapat melihat:
+
+- Draft
+- Published
+- Archived
+
+### Public Catalog API
+
+```text
+GET /api/v1/catalog/products
+GET /api/v1/catalog/products/{productCode}
+```
+
+Digunakan oleh:
+
+- Marketplace
+- Quote Service
+- Proposal Service
+- Checkout Service
+
+Hanya mengembalikan produk yang memenuhi seluruh kondisi berikut:
+
+- `status = PUBLISHED`
+- `effective_date <= current_date`
+- `expiry_date IS NULL OR expiry_date >= current_date`
+
+### Alasan Pemisahan
+
+- **Security** menjadi lebih sederhana karena endpoint publik tidak perlu memfilter banyak status berdasarkan peran.
+- **Caching** menjadi lebih efektif karena katalog publik relatif stabil dan sering diakses.
+- **Maintainability** meningkat karena perubahan kebutuhan Back Office tidak memengaruhi consumer eksternal.
+
+Pendekatan ini tetap konsisten dengan BRD dan TSD, serta tidak menambahkan business feature baru, hanya memisahkan kontrak API berdasarkan tujuan penggunaannya.
 
 ---
 

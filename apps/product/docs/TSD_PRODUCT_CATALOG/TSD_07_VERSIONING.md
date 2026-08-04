@@ -115,29 +115,21 @@ Perubahan hanya diperbolehkan pada Draft.
 # 5. Versioning Workflow
 
 ```mermaid
-flowchart TD
+stateDiagram-v2
 
-Draft
+    [*] --> Draft
 
-↓
+    Draft --> UpdateProduct: Update Product
 
-Update Product
+    UpdateProduct --> Publish: Publish
 
-↓
+    Publish --> CreateSnapshot: Create Snapshot
 
-Publish
+    CreateSnapshot --> IncrementVersion: Version +1
 
-↓
+    IncrementVersion --> Published
 
-Create Snapshot
-
-↓
-
-Version +1
-
-↓
-
-Published
+    Published --> [*]
 ```
 
 ---
@@ -290,26 +282,17 @@ Trade-off:
 
 ```mermaid
 sequenceDiagram
-
-actor Admin
-
-participant Product
-
-participant VersionService
-
-participant ProductVersionRepository
-
-Admin->>Product: Publish()
-
-Product->>Product: Validate()
-
-Product->>VersionService: Create Snapshot
-
-VersionService->>ProductVersionRepository: Save Version
-
-VersionService-->>Product
-
-Product-->>Admin
+    actor Admin
+    participant Product
+    participant VersionService
+    participant ProductVersionRepository
+    Admin->>Product: Publish()
+    Product->>Product: Validate()
+    Product->>VersionService: Create Snapshot
+    VersionService->>ProductVersionRepository: Save Version
+    ProductVersionRepository-->>VersionService: Version Saved
+    VersionService-->>Product: Snapshot Created
+    Product-->>Admin: Published
 ```
 
 ---
@@ -385,26 +368,16 @@ GET
 
 ```mermaid
 sequenceDiagram
-
-actor Consumer
-
-participant Controller
-
-participant QueryService
-
-participant Repository
-
-Consumer->>Controller
-
-Controller->>QueryService
-
-QueryService->>Repository
-
-Repository-->>QueryService
-
-QueryService-->>Controller
-
-Controller-->>Consumer
+    actor Consumer
+    participant Controller
+    participant QueryService
+    participant Repository
+    Consumer->>Controller: GET /products/{id}/versions
+    Controller->>QueryService: GetVersionHistoryQuery
+    QueryService->>Repository: Find Versions
+    Repository-->>QueryService: Version List
+    QueryService-->>Controller: Version History
+    Controller-->>Consumer: HTTP 200
 ```
 
 ---

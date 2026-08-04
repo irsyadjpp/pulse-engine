@@ -481,19 +481,251 @@ Testing --> Deployment
 
 ---
 
-# 27. Requires Functional Clarification
+# 27. Traceability Governance
 
-| Item | Status |
-|------|--------|
-| Requirement ID Convention | Requires Functional Clarification |
-| Issue Tracking Tool | Requires Functional Clarification |
-| Release Management Workflow | Requires Functional Clarification |
-| Change Approval Process | Requires Functional Clarification |
-| Requirement Baseline Process | Requires Functional Clarification |
+Poin-poin berikut merupakan **Traceability Governance**. Requirement Traceability Matrix (RTM) seharusnya **independen dari tool dan proses organisasi**. Traceability menjawab:
+
+> **Apakah setiap requirement bisnis dapat ditelusuri hingga implementasi dan pengujiannya?**
+
+Bukan:
+
+> **Tool apa yang digunakan?**
+
+## 27.1 Requirement ID Convention
+
+### Keputusan
+
+Setiap requirement harus memiliki identifier unik yang konsisten di seluruh artefak proyek.
+
+Konvensi yang direkomendasikan:
+
+| Artefak | Format |
+|----------|--------|
+| Business Requirement | BR-001 |
+| Functional Requirement | FR-001 |
+| Business Rule | BRULE-001 |
+| API | API-001 |
+| Domain Object | DOM-001 |
+| Database Object | DB-001 |
+| Test Case | TC-001 |
+| Non-Functional Requirement | NFR-001 |
+
+Contoh:
+
+```
+BR-001
+      ↓
+FR-003
+      ↓
+API-005
+      ↓
+DOM-002
+      ↓
+DB-004
+      ↓
+TC-017
+```
+
+### Rationale
+
+- Mempermudah penelusuran requirement.
+- Mempermudah impact analysis.
+- Mendukung audit dan change management.
+
+**Status:** ✅ Resolved
 
 ---
 
-# 28. Final Project Traceability
+## 27.2 Issue Tracking
+
+### Keputusan
+
+Requirement tidak memiliki ketergantungan terhadap Issue Tracking Tool tertentu.
+
+Implementasi dapat menggunakan:
+
+- Jira
+- Azure DevOps
+- GitHub Issues
+- GitLab Issues
+- Linear
+
+Requirement ID harus dapat direferensikan oleh Issue Tracking Tool yang digunakan organisasi.
+
+### Rationale
+
+Traceability harus bersifat tool-agnostic.
+
+**Status:** ✅ Resolved
+
+---
+
+## 27.3 Release Management
+
+### Keputusan
+
+Product Catalog tidak mendefinisikan workflow release organisasi.
+
+Setiap release harus dapat ditelusuri terhadap:
+
+- Requirement
+- Source Code
+- Database Migration
+- API Version
+- Test Result
+- Deployment Artifact
+
+Contoh:
+
+```
+Release 1.0.0
+
+↓
+
+BR-001
+
+↓
+
+FR-001
+
+↓
+
+API-003
+
+↓
+
+Migration V1
+
+↓
+
+Docker Image
+
+↓
+
+Deployment
+```
+
+### Rationale
+
+Release harus dapat diaudit tanpa bergantung pada proses release tertentu.
+
+**Status:** ✅ Resolved
+
+---
+
+## 27.4 Change Management
+
+### Keputusan
+
+Perubahan requirement harus mempertahankan traceability.
+
+Setiap perubahan minimal harus menghubungkan:
+
+- Requirement yang berubah
+- Dokumen yang terdampak
+- API yang berubah
+- Domain Model yang berubah
+- Database Migration
+- Test Case yang diperbarui
+
+Mekanisme approval mengikuti governance organisasi.
+
+### Rationale
+
+Menjaga konsistensi artefak dan mempermudah impact analysis.
+
+**Status:** ✅ Resolved
+
+---
+
+## 27.5 Requirement Baseline
+
+### Keputusan
+
+Setiap versi BRD, FSD, dan TSD merupakan baseline yang terdokumentasi.
+
+Perubahan setelah baseline harus:
+
+- memiliki versi dokumen
+- memiliki riwayat perubahan
+- dapat ditelusuri ke requirement yang diperbarui
+
+Contoh:
+
+| Document | Version |
+|----------|---------|
+| BRD | 1.0 |
+| FSD | 1.0 |
+| TSD | 1.0 |
+
+Perubahan berikutnya:
+
+```
+BRD 1.1
+
+↓
+
+FSD 1.1
+
+↓
+
+TSD 1.1
+
+↓
+
+Implementation
+```
+
+### Rationale
+
+Mendukung version control dan audit dokumen.
+
+**Status:** ✅ Resolved
+
+---
+
+# 28. Traceability Governance Summary
+
+| Area | Decision |
+|------|----------|
+| Requirement Identifier | Mandatory |
+| Requirement Traceability | Mandatory |
+| Requirement Baseline | Versioned |
+| Change Traceability | Mandatory |
+| Release Traceability | Mandatory |
+| Tool Dependency | Vendor Agnostic |
+| Issue Tracking | Organization Choice |
+| Change Approval | Organization Governance |
+
+---
+
+## 28.1 Organization Governance Ownership
+
+Item berikut merupakan **Organization Governance** — tidak dapat diputuskan oleh Product Catalog, tetapi juga bukan *Requires Functional Clarification*.
+
+| Item                         | Pemilik Keputusan                                   |
+| ---------------------------- | --------------------------------------------------- |
+| Requirement ID Convention    | Architecture / PMO (atau gunakan konvensi pada TSD) |
+| Issue Tracking Tool          | PMO / Engineering                                   |
+| Release Management Workflow  | DevOps / Release Management                         |
+| Change Approval Process      | CAB / Architecture Board / Product Owner            |
+| Requirement Baseline Process | PMO / Business Analysis                             |
+
+---
+
+# 29. Master Traceability Matrix
+
+Matriks berikut menjadi **indeks utama seluruh implementasi** — membantu saat impact analysis, audit, UAT, maupun regression testing, karena setiap perubahan requirement dapat langsung ditelusuri hingga implementasi dan pengujiannya.
+
+| BRD    | FSD    | TSD         | API                         | Domain           | Database          | Test Case |
+| ------ | ------ | ----------- | --------------------------- | ---------------- | ----------------- | --------- |
+| BR-001 | FR-001 | TSD-API-001 | POST /companies             | InsuranceCompany | insurance_company | TC-001    |
+| BR-002 | FR-005 | TSD-DOM-002 | POST /products              | Product          | product           | TC-015    |
+| BR-003 | FR-010 | TSD-VER-001 | POST /products/{id}/publish | ProductVersion   | product_version   | TC-041    |
+
+---
+
+# 30. Final Project Traceability
 
 ```mermaid
 flowchart TD
@@ -531,7 +763,7 @@ Deployment --> Production
 
 ---
 
-# 29. Project Documentation Coverage
+# 31. Project Documentation Coverage
 
 | Document | Status |
 |-----------|--------|
@@ -571,7 +803,7 @@ Deployment --> Production
 
 ---
 
-# 30. Document Completion Summary
+# 32. Document Completion Summary
 
 Dengan selesainya dokumen ini, paket dokumentasi **Product Catalog Service** telah mencakup seluruh artefak utama yang diperlukan untuk implementasi enterprise:
 

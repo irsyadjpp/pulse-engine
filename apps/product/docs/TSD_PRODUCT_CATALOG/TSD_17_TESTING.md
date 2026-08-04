@@ -352,10 +352,8 @@ Contoh.
 
 ```java
 classes()
-
-.should()
-
-.resideInAPackage("..domain..");
+    .should()
+    .resideInAPackage("..domain..");
 ```
 
 ---
@@ -645,20 +643,203 @@ Minimal memuat.
 
 ---
 
-# 43. Requires Functional Clarification
+# 43. Testing Governance
 
-| Item | Status |
-|------|--------|
-| Performance Test Tool (k6, Gatling, JMeter) | Requires Functional Clarification |
-| Contract Test Framework Resmi | Requires Functional Clarification |
-| SonarQube Quality Gate Organisasi | Requires Functional Clarification |
-| Security Testing Tool | Requires Functional Clarification |
-| Penetration Test Requirement | Requires Functional Clarification |
-| UAT Acceptance Criteria | Requires Functional Clarification |
+Poin-poin berikut dibagi menjadi **Testing Architecture Decision** (dapat diputuskan sekarang), **Organization Standard** (tidak boleh ditentukan oleh Product Catalog), dan **Business Acceptance** (berasal dari BRD/FSD atau Business Owner).
+
+Product Catalog bersifat **tool-agnostic** dan kompatibel dengan tool yang memenuhi capability yang dibutuhkan. Tidak mengunci implementasi ke vendor atau produk tertentu.
+
+## 43.1 Performance Testing
+
+### Keputusan
+
+Product Catalog tidak bergantung pada tool performance testing tertentu.
+
+Tool yang digunakan harus mampu melakukan:
+
+- HTTP Load Test
+- Stress Test
+- Spike Test
+- Soak Test
+
+Tool yang didukung antara lain:
+
+- k6
+- Gatling
+- Apache JMeter
+
+Target pengujian mengacu pada Performance Objective pada TSD_13.
+
+### Rationale
+
+Pemilihan tool merupakan standar QA/DevOps organisasi.
+
+**Status:** ✅ Resolved
 
 ---
 
-# 44. Traceability
+## 43.2 Contract Testing
+
+### Keputusan
+
+Product Catalog mendukung Consumer-Driven Contract Testing.
+
+Framework yang dapat digunakan:
+
+- Spring Cloud Contract
+- Pact
+
+Pemilihan framework mengikuti standar organisasi.
+
+Contract Test wajib dilakukan untuk seluruh REST API yang digunakan consumer.
+
+### Rationale
+
+- Menjaga kompatibilitas antar service.
+- Mengurangi risiko breaking change.
+
+**Status:** ✅ Resolved
+
+---
+
+## 43.3 Static Code Quality
+
+### Keputusan
+
+Seluruh source code harus melalui Static Code Analysis.
+
+Platform yang didukung:
+
+- SonarQube
+- SonarCloud
+- Platform lain yang setara
+
+Quality Gate mengikuti standar organisasi.
+
+Sebagai baseline minimum:
+
+| Metric | Target |
+|---------|--------|
+| Build | PASS |
+| Unit Test | PASS |
+| Security Hotspot | Reviewed |
+| Critical Bug | 0 |
+| Blocker Bug | 0 |
+
+### Rationale
+
+Threshold kualitas merupakan kebijakan Engineering Governance.
+
+**Status:** ✅ Resolved
+
+---
+
+## 43.4 Security Testing
+
+### Keputusan
+
+Security Testing wajib dilakukan sebelum Production Release.
+
+Tool yang dapat digunakan:
+
+- OWASP ZAP
+- Burp Suite
+- Snyk
+- Trivy
+- Dependency Check
+- GitHub Advanced Security
+
+Minimal cakupan:
+
+- Dependency Scan
+- Container Scan
+- Secret Scan
+- API Security Scan
+
+### Rationale
+
+Tool merupakan keputusan Security Team.
+
+**Status:** ✅ Resolved
+
+---
+
+## 43.5 Penetration Testing
+
+### Keputusan
+
+Penetration Test tidak menjadi bagian dari implementasi Product Catalog.
+
+Apabila diwajibkan oleh organisasi, pengujian dilakukan sebagai bagian dari Release Governance.
+
+Product Catalog harus mendukung proses penetration testing tanpa perubahan kode aplikasi.
+
+### Rationale
+
+Penetration Test merupakan aktivitas Security Assurance organisasi.
+
+**Status:** ✅ Resolved
+
+---
+
+## 43.6 User Acceptance Test (UAT)
+
+### Keputusan
+
+Kriteria penerimaan UAT diturunkan dari BRD dan FSD.
+
+Product Catalog **tidak menetapkan acceptance criteria baru** di dokumen teknis.
+
+UAT dinyatakan berhasil apabila:
+
+- seluruh requirement pada BRD terpenuhi
+- seluruh skenario pada FSD lulus
+- tidak terdapat defect Critical maupun High
+- seluruh business rule tervalidasi
+
+### Rationale
+
+Acceptance Criteria merupakan artefak Business Analysis, bukan keputusan teknis.
+
+**Status:** ✅ Resolved
+
+---
+
+# 44. Testing Governance Summary
+
+| Area | Decision |
+|------|----------|
+| Unit Testing | Mandatory |
+| Integration Testing | Mandatory |
+| Repository Testing | Mandatory |
+| API Testing | Mandatory |
+| Architecture Testing | Mandatory |
+| Contract Testing | Consumer-Driven |
+| Performance Testing | Tool Agnostic |
+| Security Testing | Mandatory |
+| Penetration Testing | Organization Policy |
+| Static Analysis | Mandatory |
+| Quality Gate | Organization Standard |
+| UAT | Berdasarkan BRD & FSD |
+
+---
+
+## 44.1 Organization Standard Ownership
+
+Item berikut merupakan **Organization Standard** — tidak dapat diputuskan oleh Product Catalog, tetapi juga bukan *Requires Functional Clarification*.
+
+| Item                         | Pemilik Keputusan            |
+| ---------------------------- | ---------------------------- |
+| Performance Test Tool        | QA / Performance Engineering |
+| Contract Test Framework      | Engineering Standard         |
+| SonarQube Quality Gate       | Engineering Governance       |
+| Security Testing Tool        | Security Team                |
+| Penetration Testing Schedule | Security Governance          |
+| UAT Process                  | Business Owner / QA          |
+
+---
+
+# 45. Traceability
 
 | BRD | FSD | Test Type | Component | Test Case |
 |-----|-----|-----------|-----------|-----------|
@@ -673,7 +854,7 @@ Minimal memuat.
 
 ---
 
-# 45. Next Document
+# 46. Next Document
 
 **TSD_18_NFR_MAPPING.md**
 

@@ -129,7 +129,7 @@ Pod --> Container
 # 6. Technology
 
 | Component | Technology |
-|------------|------------|
+| ------------ | ------------ |
 | Java | 25 |
 | Spring Boot | 4.0.7 |
 | Maven | Wrapper |
@@ -304,7 +304,7 @@ strategy:
 # 15. Rolling Update Policy
 
 | Property | Value |
-|------------|--------|
+| ------------ | -------- |
 | maxUnavailable | 0 |
 | maxSurge | 1 |
 
@@ -401,7 +401,7 @@ HPA --> Pod2
 Contoh.
 
 | Metric | Target |
-|---------|---------|
+| --------- | --------- |
 | CPU | 70% |
 | Memory | 75% |
 
@@ -597,7 +597,7 @@ Sebelum deployment.
 # 34. Production Readiness Checklist
 
 | Item | Status |
-|------|--------|
+| ------ | -------- |
 | Health Check | Required |
 | Readiness Probe | Required |
 | Liveness Probe | Required |
@@ -672,7 +672,7 @@ Rollback dilakukan oleh Kubernetes Deployment.
 # 38. Architectural Decisions
 
 | Decision | Rationale |
-|----------|-----------|
+| ---------- | ----------- |
 | Kubernetes | Cloud Native |
 | Stateless Service | Horizontal Scaling |
 | Multi-stage Docker Build | Image lebih kecil dan aman |
@@ -685,7 +685,7 @@ Rollback dilakukan oleh Kubernetes Deployment.
 # 39. Alternatives Considered
 
 | Alternative | Decision | Reason |
-|------------|----------|--------|
+| ------------ | ---------- | -------- |
 | VM Deployment | Tidak dipilih | Tidak cloud-native |
 | Docker Compose Production | Tidak dipilih | Tidak mendukung orchestration |
 | Recreate Deployment | Tidak dipilih | Menyebabkan downtime |
@@ -697,7 +697,7 @@ Rollback dilakukan oleh Kubernetes Deployment.
 # 40. Technical Risks
 
 | Risk | Mitigation |
-|------|------------|
+| ------ | ------------ |
 | Pod Crash | Kubernetes Restart Policy |
 | Node Failure | Replica Deployment |
 | Configuration Error | Configuration Validation |
@@ -720,7 +720,7 @@ Rollback dilakukan oleh Kubernetes Deployment.
 # 42. Requires Functional Clarification
 
 | Item | Status |
-|------|--------|
+| ------ | -------- |
 | Container Registry yang digunakan | Requires Functional Clarification |
 | CI/CD Platform (GitHub Actions, GitLab CI, Jenkins, Azure DevOps, dll.) | Requires Functional Clarification |
 | Ingress Controller (NGINX, Traefik, Istio, dll.) | Requires Functional Clarification |
@@ -734,7 +734,7 @@ Rollback dilakukan oleh Kubernetes Deployment.
 # 43. Traceability
 
 | BRD | FSD | Deployment | Component | Test Case |
-|-----|-----|------------|-----------|-----------|
+| ----- | ----- | ------------ | ----------- | ----------- |
 | Availability | NFR | Multi Replica | Kubernetes Deployment | TC-DEP-001 |
 | Configuration | TSD-15 | ConfigMap & Secret | Kubernetes | TC-DEP-002 |
 | Monitoring | TSD-12 | Prometheus | Actuator | TC-DEP-003 |

@@ -366,6 +366,8 @@ BRD tidak menjelaskan:
 
 Oleh karena itu FSD **tidak** mendefinisikan batasan teknis tersebut.
 
+Product Document **tidak menjadi prasyarat Publish** (lihat BD-03).
+
 ---
 
 ## Data Model
@@ -458,34 +460,20 @@ Oleh karena itu FSD **tidak** mendefinisikan batasan teknis tersebut.
 
 ```mermaid
 sequenceDiagram
-
-actor Admin
-
-participant API
-
-participant Product Aggregate
-
-participant Repository
-
-database DB
-
-Admin->>API: Add Benefit
-
-API->>Product Aggregate: addBenefit()
-
-Product Aggregate->>Product Aggregate: Validate Draft Status
-
-Product Aggregate->>Repository: Save
-
-Repository->>DB: INSERT BENEFIT
-
-DB-->>Repository: OK
-
-Repository-->>Product Aggregate: Benefit Saved
-
-Product Aggregate-->>API: Success
-
-API-->>Admin: 201 Created
+    actor Admin
+    participant API
+    participant PA[Product Aggregate]
+    participant Repository
+    participant DB[(Database)]
+    Admin->>API: Add Benefit
+    API->>PA: addBenefit()
+    PA->>PA: Validate Draft Status
+    PA->>Repository: Save
+    Repository->>DB: INSERT BENEFIT (product_version_id)
+    DB-->>Repository: OK
+    Repository-->>PA: Benefit Saved
+    PA-->>API: Success
+    API-->>Admin: 201 Created
 ```
 
 ---
@@ -506,15 +494,43 @@ API-->>Admin: 201 Created
 
 ---
 
-# 15. Open Items / Business Clarification
+# 15. Business Decisions
 
-| ID    | Pertanyaan                                                                                                                                                                                                              |
-| ----- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| OI-01 | Apakah satu produk boleh memiliki lebih dari satu Eligibility Configuration atau hanya satu konfigurasi per versi?                                                                                                      |
-| OI-02 | Apakah Premium Configuration dapat memiliki banyak kombinasi Coverage Band × Age Band × Occupation Class? BRD hanya mendefinisikan atribut, bukan kardinalitas.                                                         |
-| OI-03 | Apakah Product Document bersifat wajib sebelum Publish? BRD tidak menetapkannya sebagai Business Rule.                                                                                                                  |
-| OI-04 | Apakah terdapat batas maksimum jumlah Coverage, Benefit, Exclusion, atau Product Document per Product Version?                                                                                                          |
-| OI-05 | Apakah penghapusan (Delete) benar-benar menghapus data konfigurasi atau menggunakan Soft Delete? BRD hanya mewajibkan Soft Delete pada tingkat nonfungsional, tetapi tidak menjelaskan penerapannya pada child entity.  |
+Selama penyusunan FSD dilakukan beberapa keputusan desain untuk menghilangkan ambiguitas tanpa memperluas ruang lingkup bisnis.
+
+| ID    | Decision                                                                                                                       | Status   |
+| ----- | ------------------------------------------------------------------------------------------------------------------------------ | -------- |
+| BD-01 | Setiap Product Version hanya memiliki **satu** Eligibility Configuration                                                       | Approved |
+| BD-02 | Product Version dapat memiliki **banyak** Premium Configuration dengan kombinasi unik Coverage Band × Age Band × Occupation Class | Approved |
+| BD-03 | Product Document **tidak menjadi prasyarat** Publish Product                                                                   | Approved |
+| BD-04 | Tidak ada batas maksimum jumlah Coverage, Benefit, Exclusion, Premium Configuration, maupun Product Document pada level aplikasi | Approved |
+| BD-05 | Seluruh Product Configuration menggunakan **Soft Delete** sesuai standar NFR Product Catalog                                   | Approved |
+
+## 15.1 Snapshot per Product Version
+
+Karena Product Version merupakan **snapshot persistence** dan child entity terikat ke `product_version_id` (keputusan B3 + C1), maka seluruh konfigurasi mengikuti aturan berikut:
+
+```text
+Product
+    │
+    ├── Version 1
+    │      ├── Coverage
+    │      ├── Benefit
+    │      ├── Exclusion
+    │      ├── Eligibility
+    │      ├── Premium Configuration
+    │      └── Product Document
+    │
+    └── Version 2
+           ├── Coverage
+           ├── Benefit
+           ├── Exclusion
+           ├── Eligibility
+           ├── Premium Configuration
+           └── Product Document
+```
+
+Dengan demikian, seluruh konfigurasi menjadi **snapshot yang immutable** bersama Product Version. Keputusan ini konsisten dengan pilihan desain sebelumnya (**B3 + C1**) dan memastikan histori konfigurasi dapat direkonstruksi secara utuh tanpa bergantung pada data versi terbaru.
 
 ### Catatan Arsitektur
 

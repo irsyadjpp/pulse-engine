@@ -254,14 +254,15 @@ Semua transaction dibuat sesingkat mungkin.
 
 ```mermaid
 sequenceDiagram
-
-Controller->>Application
-
-Application->>Repository
-
-Repository-->>Application
-
-Application-->>Controller
+    participant Controller
+    participant Application
+    participant Repository
+    Controller->>Application: Invoke Use Case
+    Application->>Application: BEGIN TRANSACTION
+    Application->>Repository: Save / Update
+    Repository-->>Application: Result
+    Application->>Application: COMMIT
+    Application-->>Controller: Result
 ```
 
 Tidak melakukan pemanggilan service eksternal dalam transaction database.
@@ -480,13 +481,11 @@ Session tidak disimpan di server.
 
 Saat ini menggunakan satu primary database.
 
-Read Replica **tidak didefinisikan dalam BRD**.
+Read Replica **kompatibel secara arsitektur** (lihat Section 40.5).
 
-Status:
+Aplikasi menggunakan satu abstraction Repository sehingga implementasi Read Replica dapat ditambahkan tanpa perubahan Domain Layer.
 
-```
-Requires Functional Clarification
-```
+Penggunaan Read Replica merupakan keputusan infrastruktur dan dilakukan apabila diperlukan.
 
 ---
 
@@ -622,21 +621,239 @@ Requires Capacity Validation
 
 ---
 
-# 40. Requires Functional Clarification
+# 40. Performance Governance
 
-| Item | Status |
-| ------ | -------- |
-| Peak Concurrent User | Requires Functional Clarification |
-| SLA Resmi | Requires Functional Clarification |
-| Volume Product per Company | Requires Functional Clarification |
-| Target Growth Tahunan | Requires Functional Clarification |
-| Read Replica Database | Requires Functional Clarification |
-| Autoscaling Policy | Requires Functional Clarification |
-| Multi Region Deployment | Requires Functional Clarification |
+Poin-poin berikut dibagi menjadi **Performance Architecture Decision** (dapat diputuskan sekarang) dan **Capacity Planning** (berasal dari bisnis/operasional). Tidak menggunakan angka yang tidak didukung BRD.
+
+## 40.1 Peak Concurrent User
+
+### Keputusan
+
+Product Catalog tidak menetapkan target jumlah concurrent user.
+
+Service dirancang sebagai **stateless service** sehingga dapat diskalakan secara horizontal.
+
+Target kapasitas (jumlah concurrent user) merupakan hasil Capacity Planning berdasarkan:
+
+- jumlah pengguna Back Office
+- jumlah integrasi antar service
+- pola traffic produksi
+
+### Architectural Requirement
+
+Service harus mampu melakukan horizontal scaling tanpa perubahan kode aplikasi.
+
+### Rationale
+
+Jumlah concurrent user merupakan karakteristik deployment, bukan requirement fungsional.
+
+**Status:** ✅ Resolved
 
 ---
 
-# 41. Traceability
+## 40.2 Service Level Agreement (SLA)
+
+### Keputusan
+
+Product Catalog tidak menetapkan SLA organisasi.
+
+Sebagai acuan implementasi, service memiliki **Performance Objective** berikut.
+
+| API | Target Response Time |
+|------|----------------------|
+| GET Product | ≤ 300 ms |
+| Search Product | ≤ 500 ms |
+| Create Product | ≤ 500 ms |
+| Update Product | ≤ 500 ms |
+| Publish Product | ≤ 2 detik |
+
+Target SLA resmi tetap mengikuti kebijakan organisasi atau SRE Team.
+
+### Rationale
+
+SLA merupakan komitmen layanan organisasi, sedangkan Performance Objective digunakan sebagai target implementasi dan pengujian.
+
+**Status:** ✅ Resolved
+
+---
+
+## 40.3 Product Volume per Company
+
+### Keputusan
+
+Product Catalog tidak menetapkan batas jumlah Product per Company.
+
+Database dan domain model harus mendukung pertumbuhan tanpa batas logis.
+
+Optimasi dilakukan melalui:
+
+- Indexing
+- Pagination
+- Query Optimization
+- Redis Cache
+
+### Rationale
+
+Jumlah produk merupakan data bisnis yang dapat berubah sewaktu-waktu.
+
+Tidak boleh dibatasi oleh implementasi aplikasi.
+
+**Status:** ✅ Resolved
+
+---
+
+## 40.4 Target Growth
+
+### Keputusan
+
+Target pertumbuhan bisnis tidak menjadi bagian dari Product Catalog.
+
+Service harus dirancang agar dapat diskalakan melalui:
+
+- Horizontal Scaling
+- Database Optimization
+- Cache Layer
+- Connection Pool Tuning
+
+### Rationale
+
+Pertumbuhan bisnis merupakan input Capacity Planning.
+
+Arsitektur tidak boleh mengasumsikan angka tertentu.
+
+**Status:** ✅ Resolved
+
+---
+
+## 40.5 Read Replica
+
+### Keputusan
+
+Product Catalog kompatibel dengan arsitektur Read Replica.
+
+Aplikasi menggunakan satu abstraction Repository sehingga implementasi Read Replica dapat ditambahkan tanpa perubahan Domain Layer.
+
+Contoh implementasi:
+
+```
+Write
+
+↓
+
+Primary Database
+
+Read
+
+↓
+
+Read Replica
+```
+
+Penggunaan Read Replica merupakan keputusan infrastruktur dan dilakukan apabila diperlukan.
+
+### Rationale
+
+Mengurangi beban database utama pada workload yang didominasi operasi baca.
+
+**Status:** ✅ Resolved
+
+---
+
+## 40.6 Autoscaling
+
+### Keputusan
+
+Autoscaling bukan tanggung jawab aplikasi.
+
+Service dirancang agar kompatibel dengan Kubernetes Horizontal Pod Autoscaler (HPA).
+
+Metric yang direkomendasikan:
+
+- CPU Utilization
+- Memory Utilization
+- HTTP Request Rate
+- Response Time
+
+### Rationale
+
+Kebijakan autoscaling ditentukan oleh Platform Team.
+
+Aplikasi hanya perlu bersifat stateless.
+
+**Status:** ✅ Resolved
+
+---
+
+## 40.7 Multi Region Deployment
+
+### Keputusan
+
+Multi-region deployment bukan requirement Product Catalog.
+
+Service dirancang agar region-agnostic.
+
+Apabila organisasi mengadopsi multi-region di masa depan:
+
+- setiap region memiliki deployment sendiri
+- PostgreSQL menjadi Source of Truth sesuai strategi organisasi
+- Redis bersifat lokal per region
+
+Tidak ada perubahan pada Domain Model maupun API.
+
+### Rationale
+
+Multi-region merupakan keputusan deployment, bukan requirement aplikasi.
+
+**Status:** ✅ Resolved
+
+---
+
+# 41. Performance Architecture Summary
+
+| Area | Decision |
+|------|----------|
+| Service Design | Stateless |
+| Scaling | Horizontal |
+| Database | PostgreSQL |
+| Cache | Redis |
+| Read Replica | Supported |
+| Autoscaling | Kubernetes HPA Compatible |
+| Multi Region | Supported secara arsitektur |
+| Performance Target | Implementation Objective |
+| SLA | Organization Responsibility |
+| Capacity Planning | Organization Responsibility |
+
+---
+
+## 41.1 Performance Design Principles
+
+- Seluruh endpoint GET harus mendukung pagination.
+- Tidak ada endpoint yang mengembalikan seluruh dataset tanpa batas.
+- Seluruh query pencarian harus menggunakan indeks yang sesuai.
+- Operasi write menggunakan transaksi sesingkat mungkin.
+- Tidak boleh ada operasi sinkron yang memblokir request lebih lama dari yang diperlukan.
+- Cache digunakan untuk data referensi yang sering dibaca.
+- Database connection pool harus dikonfigurasi dan dipantau.
+
+---
+
+## 41.2 Decision Ownership
+
+Item berikut **tidak boleh diputuskan oleh Product Catalog** dan menjadi tanggung jawab organisasi atau platform.
+
+| Item                                              | Pemilik Keputusan            |
+| ------------------------------------------------- | ---------------------------- |
+| Peak Concurrent User                              | Business + Capacity Planning |
+| SLA resmi (mis. 99,95%)                           | SRE / Organization           |
+| Volume Product per Company aktual                 | Business Growth              |
+| Target Growth Tahunan                             | Business Planning            |
+| Read Replica digunakan atau tidak                 | DBA / Platform Team          |
+| Autoscaling Threshold (CPU 70%, Memory 80%, dst.) | Platform Team                |
+| Multi Region Deployment                           | Enterprise Architecture      |
+
+---
+
+# 42. Traceability
 
 | BRD | FSD | Performance Strategy | Component | Test Case |
 | ----- | ----- | ---------------------- | ----------- | ----------- |
@@ -648,7 +865,7 @@ Requires Capacity Validation
 
 ---
 
-# 42. Next Document
+# 43. Next Document
 
 **TSD_14_INTEGRATION.md**
 

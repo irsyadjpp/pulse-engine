@@ -303,18 +303,16 @@ Menggunakan OpenTelemetry.
 
 ```mermaid
 sequenceDiagram
-
-Client->>Gateway
-
-Gateway->>ProductCatalog
-
-ProductCatalog->>Database
-
-Database-->>ProductCatalog
-
-ProductCatalog-->>Gateway
-
-Gateway-->>Client
+    participant Client
+    participant Gateway
+    participant ProductCatalog
+    participant Database
+    Client->>Gateway: HTTP Request (traceId)
+    Gateway->>ProductCatalog: Forward Request
+    ProductCatalog->>Database: Query / Persist (span)
+    Database-->>ProductCatalog: Result
+    ProductCatalog-->>Gateway: Response
+    Gateway-->>Client: HTTP Response
 ```
 
 ---
@@ -549,20 +547,13 @@ Metric.
 
 ```mermaid
 sequenceDiagram
-
-participant Prometheus
-
-participant ProductCatalog
-
-participant Actuator
-
-Prometheus->>Actuator
-
-Actuator->>ProductCatalog
-
-ProductCatalog-->>Actuator
-
-Actuator-->>Prometheus
+    participant Prometheus
+    participant ProductCatalog
+    participant Actuator
+    Prometheus->>Actuator: Scrape /actuator/prometheus
+    Actuator->>ProductCatalog: Collect metrics
+    ProductCatalog-->>Actuator: Metrics snapshot
+    Actuator-->>Prometheus: Metrics response
 ```
 
 ---
@@ -647,20 +638,206 @@ ObservationRegistry observationRegistry() {
 
 ---
 
-# 39. Requires Functional Clarification
+# 39. Observability Governance
 
-| Item | Status |
-| ------ | -------- |
-| Platform observability organisasi (Grafana Cloud, ELK, OpenSearch, dll.) | Requires Functional Clarification |
-| Alert Notification Channel (Email, Slack, Teams, PagerDuty) | Requires Functional Clarification |
-| Metric Retention Period | Requires Functional Clarification |
-| Trace Retention Period | Requires Functional Clarification |
-| Sampling Rate OpenTelemetry | Requires Functional Clarification |
-| SLO resmi organisasi | Requires Functional Clarification |
+Poin-poin berikut merupakan **Platform Governance** dan **Organization Policy**, bukan Functional Requirements. Product Catalog tidak boleh mengunci implementasi ke vendor atau angka tertentu tanpa dasar organisasi.
+
+## 39.1 Observability Platform
+
+### Keputusan
+
+Product Catalog tidak bergantung pada platform observability tertentu.
+
+Service menghasilkan telemetry yang kompatibel dengan OpenTelemetry sehingga dapat diintegrasikan dengan berbagai platform observability.
+
+Platform yang didukung antara lain:
+
+- Prometheus + Grafana
+- Grafana Cloud
+- OpenSearch
+- ELK Stack
+- Datadog
+- New Relic
+- Dynatrace
+- Azure Monitor
+- Google Cloud Operations
+
+### Rationale
+
+- Vendor agnostic.
+- Tidak mengunci implementasi pada platform tertentu.
+- Selaras dengan OpenTelemetry.
+
+**Status:** ✅ Resolved
 
 ---
 
-# 40. Traceability
+## 39.2 Alert Notification Channel
+
+### Keputusan
+
+Product Catalog tidak mengirim notifikasi alert secara langsung.
+
+Alert dikelola oleh platform monitoring.
+
+Channel yang dapat digunakan:
+
+- Email
+- Microsoft Teams
+- Slack
+- PagerDuty
+- Opsgenie
+- ServiceNow
+
+Pemilihan channel mengikuti kebijakan SRE organisasi.
+
+### Rationale
+
+Alert routing merupakan tanggung jawab platform observability.
+
+**Status:** ✅ Resolved
+
+---
+
+## 39.3 Metric Retention
+
+### Keputusan
+
+Metric retention mengikuti kebijakan platform observability.
+
+Product Catalog hanya menghasilkan metric.
+
+Contoh baseline (dapat disesuaikan organisasi):
+
+| Metric | Recommended Retention |
+|---------|-----------------------|
+| High Resolution | 30 Hari |
+| Aggregated Metric | 13 Bulan |
+
+### Rationale
+
+Retensi metric merupakan keputusan kapasitas observability.
+
+**Status:** ✅ Resolved
+
+---
+
+## 39.4 Trace Retention
+
+### Keputusan
+
+Trace retention mengikuti konfigurasi distributed tracing platform.
+
+Baseline yang direkomendasikan:
+
+| Trace Type | Recommended Retention |
+|------------|-----------------------|
+| Full Trace | 7 Hari |
+| Aggregated Trace | 30 Hari |
+
+### Rationale
+
+Storage trace sangat bergantung pada volume traffic.
+
+**Status:** ✅ Resolved
+
+---
+
+## 39.5 OpenTelemetry Sampling
+
+### Keputusan
+
+Sampling rate tidak ditentukan oleh aplikasi.
+
+Sampling dikendalikan oleh OpenTelemetry Collector atau observability platform.
+
+Default yang direkomendasikan:
+
+| Environment | Sampling |
+|-------------|----------|
+| Development | 100% |
+| SIT / UAT | 100% |
+| Production | Parent Based + TraceId Ratio |
+
+Besaran sampling production mengikuti kebutuhan operasional.
+
+### Rationale
+
+Sampling merupakan konfigurasi operasional, bukan logika aplikasi.
+
+**Status:** ✅ Resolved
+
+---
+
+## 39.6 Service Level Objective (SLO)
+
+### Keputusan
+
+Product Catalog mendukung pengukuran SLO namun tidak menetapkan target organisasi.
+
+Service menyediakan metric yang diperlukan untuk menghitung:
+
+- Availability
+- Latency
+- Error Rate
+- Throughput
+
+Target SLO ditentukan oleh organisasi atau SRE Team.
+
+### Rationale
+
+SLO merupakan kebijakan operasional organisasi dan dapat berbeda antar lingkungan.
+
+**Status:** ✅ Resolved
+
+---
+
+# 40. Observability Summary
+
+| Area | Decision |
+|------|----------|
+| Metrics | Prometheus/OpenTelemetry Compatible |
+| Tracing | OpenTelemetry Compatible |
+| Logging | Structured JSON |
+| Platform | Vendor Agnostic |
+| Alerting | Platform Responsibility |
+| Notification Channel | Organization Policy |
+| Metric Retention | Platform Policy |
+| Trace Retention | Platform Policy |
+| Sampling | Collector Configuration |
+| SLO | Organization Policy |
+
+---
+
+## 40.1 Golden Signals
+
+| Signal     | Metric                                            |
+| ---------- | ------------------------------------------------- |
+| Latency    | HTTP Request Duration                             |
+| Traffic    | Request Count                                     |
+| Errors     | HTTP 4xx / 5xx Rate                               |
+| Saturation | CPU, Memory, Database Pool, Redis Connection Pool |
+
+Keempat metrik ini menjadi dasar dashboard dan alerting, serta selaras dengan praktik observability modern.
+
+---
+
+## 40.2 Decision Ownership
+
+Item berikut **tidak boleh diputuskan oleh Product Catalog**:
+
+| Item                             | Pemilik Keputusan                 |
+| -------------------------------- | --------------------------------- |
+| Grafana / ELK / OpenSearch       | **Platform Team**                 |
+| Slack / Teams / PagerDuty        | **SRE Team**                      |
+| Metric Retention                 | **Observability Platform**        |
+| Trace Retention                  | **Observability Platform**        |
+| Sampling Rate                    | **OpenTelemetry Collector**       |
+| SLO Target (99.9%, 99.95%, dst.) | **Organization / SRE Governance** |
+
+---
+
+# 41. Traceability
 
 | BRD | FSD | Observability | Component | Test Case |
 | ----- | ----- | --------------- | ----------- | ----------- |
@@ -672,7 +849,7 @@ ObservationRegistry observationRegistry() {
 
 ---
 
-# 41. Next Document
+# 42. Next Document
 
 **TSD_13_PERFORMANCE.md**
 

@@ -124,7 +124,7 @@ Contoh lifecycle produk:
 
 Hanya terdapat satu Published Version dalam satu waktu.
 
-**Assumption:** BRD tidak menyatakan apakah beberapa versi dapat Published secara bersamaan. FSD ini mengasumsikan hanya satu Published Version aktif untuk menjaga konsistensi consumer dan perlu dikonfirmasi dengan Business Owner.
+**Catatan:** Hanya satu Published Version aktif untuk menjaga konsistensi consumer (konsisten dengan prinsip immutable versioning).
 
 ---
 
@@ -185,34 +185,20 @@ Dengan demikian consumer tidak perlu melakukan rekonstruksi data historis.
 
 ```mermaid
 sequenceDiagram
-
-actor Admin
-
-participant Product
-
-participant Version
-
-participant Repository
-
-database DB
-
-Admin->>Product: Publish
-
-Product->>Product: Validate
-
-Product->>Version: Freeze Snapshot
-
-Version->>Repository: Save Version
-
-Repository->>DB: INSERT PRODUCT VERSION
-
-DB-->>Repository: Success
-
-Repository-->>Version: OK
-
-Version-->>Product: Published
-
-Product-->>Admin: Success
+    actor Admin
+    participant Product
+    participant Version
+    participant Repository
+    participant DB[(Database)]
+    Admin->>Product: Publish
+    Product->>Product: Validate
+    Product->>Version: Freeze Snapshot
+    Version->>Repository: Save Version
+    Repository->>DB: INSERT PRODUCT VERSION
+    DB-->>Repository: Success
+    Repository-->>Version: OK
+    Version-->>Product: Published
+    Product-->>Admin: Success
 ```
 
 ---
@@ -354,7 +340,7 @@ GET /api/v1/products/{productId}/versions/{version}
 GET /api/v1/products/{productId}/versions/compare?v1=1&v2=2
 ```
 
-**Assumption:** Endpoint Compare Version merupakan fitur pendukung Audit History. BRD tidak menyebutkannya secara eksplisit sehingga implementasinya perlu dikonfirmasi apabila dianggap di luar ruang lingkup.
+Compare Version merupakan fitur operasional untuk Product Administrator dan Business User, bersifat read-only dan tidak mengubah data (lihat BD-04).
 
 ---
 
@@ -410,32 +396,19 @@ GET /api/v1/audit/{auditId}
 
 ```mermaid
 sequenceDiagram
-
-actor Admin
-
-participant API
-
-participant Product Aggregate
-
-participant Repository
-
-database DB
-
-Admin->>API: Update Published Product
-
-API->>Product Aggregate: Create New Version
-
-Product Aggregate->>Repository: Copy Current Version
-
-Repository->>DB: INSERT Product Version
-
-DB-->>Repository: Success
-
-Repository-->>Product Aggregate: Version Created
-
-Product Aggregate-->>API: Draft Version
-
-API-->>Admin: Success
+    actor Admin
+    participant API
+    participant PA[Product Aggregate]
+    participant Repository
+    participant DB[(Database)]
+    Admin->>API: Update Published Product
+    API->>PA: Create New Version
+    PA->>Repository: Copy Current Version
+    Repository->>DB: INSERT Product Version
+    DB-->>Repository: Success
+    Repository-->>PA: Version Created
+    PA-->>API: Draft Version
+    API-->>Admin: Success
 ```
 
 ---
@@ -444,22 +417,14 @@ API-->>Admin: Success
 
 ```mermaid
 sequenceDiagram
-
-participant Product Aggregate
-
-participant Audit Service
-
-participant Audit Repository
-
-database DB
-
-Product Aggregate->>Audit Service: Audit Event
-
-Audit Service->>Audit Repository: Save
-
-Audit Repository->>DB: INSERT Audit
-
-DB-->>Audit Repository: Success
+    participant PA[Product Aggregate]
+    participant AuditService[Audit Service]
+    participant AuditRepository[Audit Repository]
+    participant DB[(Database)]
+    PA->>AuditService: Audit Event
+    AuditService->>AuditRepository: Save
+    AuditRepository->>DB: INSERT Audit
+    DB-->>AuditRepository: Success
 ```
 
 ---
@@ -495,15 +460,59 @@ DB-->>Audit Repository: Success
 
 ---
 
-# 24. Open Items / Business Clarification
+# 24. Business Decisions & Functional Clarification
 
-| ID | Question |
-| ---- | ---------- |
-| OI-01 | Apakah Audit History hanya dapat diakses Product Administrator atau juga Business User? |
-| OI-02 | Apakah alasan perubahan (`reason`) wajib diisi saat Publish atau setiap perubahan? |
-| OI-03 | Berapa lama histori Audit dan Product Version harus disimpan untuk memenuhi kebutuhan regulasi? BRD tidak mendefinisikan retention period. |
-| OI-04 | Apakah Archived Product dapat memiliki Draft Version baru? |
-| OI-05 | Apakah Compare Version merupakan kebutuhan bisnis atau hanya kebutuhan operasional administrator? |
+Selama penyusunan FSD dilakukan beberapa keputusan desain untuk memastikan mekanisme Versioning dan Audit konsisten dengan BRD serta prinsip immutable versioning.
+
+## 24.1 Business Decisions
+
+| ID    | Decision                                                                                                                       | Status   |
+| ----- | ------------------------------------------------------------------------------------------------------------------------------ | -------- |
+| BD-01 | Audit History dapat diakses oleh **Product Administrator** dan **Business User** sesuai hak akses (RBAC)                      | Approved |
+| BD-02 | Field **`reason`** wajib diisi pada setiap operasi yang mengubah data atau status Product                                      | Approved |
+| BD-03 | Product yang telah **Archived** tidak dapat memiliki Draft Version baru dan dianggap mencapai terminal state                    | Approved |
+| BD-04 | **Compare Version** merupakan fitur operasional untuk Product Administrator dan Business User, bersifat read-only dan tidak mengubah data | Approved |
+
+## 24.2 Functional Clarification
+
+| ID    | Item                                                                                                                                                                                                                             | Status                       |
+| ----- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------- |
+| FC-01 | Periode retensi Audit History dan Product Version mengikuti kebijakan organisasi, regulasi, dan Data Governance sehingga perlu ditentukan di tingkat enterprise                                                                    | Requires Functional Clarification |
+
+## 24.3 Immutability Rule
+
+```text
+Published Product Version bersifat immutable.
+```
+
+Konsekuensinya:
+
+- Tidak dapat di-update.
+- Tidak dapat di-delete.
+- Tidak dapat di-restore menjadi Draft.
+- Seluruh perubahan dilakukan dengan membuat **Draft Version** baru dari versi terakhir, **selama Product belum di-Archived**.
+
+Karena **Archived adalah terminal state**, aturan tersebut menjadi:
+
+```text
+Draft V1
+   │
+Publish
+   │
+Published V1
+   │
+Create Draft V2
+   │
+Publish
+   │
+Published V2
+   │
+Archive Product
+   │
+Archived (Terminal)
+```
+
+Dengan aturan ini, lifecycle **Versioning**, **Audit**, dan **State Machine** menjadi konsisten di seluruh BRD, FSD, TSD, serta implementasi database dan domain model.
 
 ---
 

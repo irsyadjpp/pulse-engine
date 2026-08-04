@@ -176,13 +176,15 @@ Tidak boleh mencatat:
 
 # 8. Log Levels
 
-| Level | Usage |
-| --------- | ------ |
-| TRACE | Deep Debug |
-| DEBUG | Development |
-| INFO | Normal Operation |
-| WARN | Business Warning |
-| ERROR | Failure |
+## Log Level Standard
+
+| Level | Digunakan Untuk                                                |
+| ----- | -------------------------------------------------------------- |
+| TRACE | Debug framework (non-production)                               |
+| DEBUG | Investigasi developer                                          |
+| INFO  | Business flow normal (Create, Publish, Archive, Login Success) |
+| WARN  | Recoverable issue (Cache Miss, Validation Warning)             |
+| ERROR | Business failure, exception, infrastructure failure            |
 
 ---
 
@@ -190,36 +192,21 @@ Tidak boleh mencatat:
 
 ```mermaid
 sequenceDiagram
-
-actor Client
-
-participant Controller
-
-participant Service
-
-participant Repository
-
-participant Logger
-
-Client->>Controller
-
-Controller->>Logger: ACCESS
-
-Controller->>Service
-
-Service->>Logger: BUSINESS
-
-Service->>Repository
-
-Repository->>Logger: DATABASE
-
-Repository-->>Service
-
-Service-->>Controller
-
-Controller->>Logger: RESPONSE
-
-Controller-->>Client
+    actor Client
+    participant Controller
+    participant Service
+    participant Repository
+    participant Logger
+    Client->>Controller: HTTP Request
+    Controller->>Logger: ACCESS (method, URI, correlationId)
+    Controller->>Service: Invoke Use Case
+    Service->>Logger: BUSINESS (event, entityId)
+    Service->>Repository: Query / Persist
+    Repository->>Logger: DATABASE (query duration)
+    Repository-->>Service: Result
+    Service-->>Controller: Result
+    Controller->>Logger: RESPONSE (status, duration)
+    Controller-->>Client: HTTP Response
 ```
 
 ---
@@ -527,13 +514,16 @@ Database Password
 
 # 28. Log Retention
 
-BRD tidak mendefinisikan retensi log.
+Retention log mengikuti kebijakan organisasi atau platform observability (lihat Section 38.1).
 
-Status
+Baseline yang direkomendasikan:
 
-```
-Requires Functional Clarification
-```
+| Log Type | Minimum Retention |
+|----------|-------------------|
+| Application Log | 30 Hari |
+| Audit Log | 7 Tahun atau sesuai regulasi |
+| Security Log | 1 Tahun |
+| Access Log | 90 Hari |
 
 ---
 
@@ -587,36 +577,21 @@ Database
 
 ```mermaid
 sequenceDiagram
-
-actor Client
-
-participant Filter
-
-participant Controller
-
-participant Service
-
-participant Repository
-
-participant Logger
-
-Client->>Filter
-
-Filter->>Logger: Request
-
-Filter->>Controller
-
-Controller->>Service
-
-Service->>Repository
-
-Repository-->>Service
-
-Service->>Logger: Business Event
-
-Controller-->>Filter
-
-Filter->>Logger: Response
+    actor Client
+    participant Filter
+    participant Controller
+    participant Service
+    participant Repository
+    participant Logger
+    Client->>Filter: HTTP Request
+    Filter->>Logger: Request (correlationId, traceId)
+    Filter->>Controller: Forward
+    Controller->>Service: Invoke Use Case
+    Service->>Repository: Query / Persist
+    Repository-->>Service: Result
+    Service->>Logger: Business Event
+    Controller-->>Filter: Response
+    Filter->>Logger: Response (status, duration)
 ```
 
 ---
@@ -697,20 +672,228 @@ public class CorrelationIdFilter
 
 ---
 
-# 38. Requires Functional Clarification
+# 38. Logging Governance Decisions
 
-| Item | Status |
-| ------ | -------- |
-| Log Retention Policy | Requires Functional Clarification |
-| Centralized Logging Platform (ELK/Loki/OpenSearch) | Requires Functional Clarification |
-| Log Archiving Policy | Requires Functional Clarification |
-| PII Masking Standard | Requires Functional Clarification |
-| Request Body Logging Policy | Requires Functional Clarification |
-| Security Event Retention | Requires Functional Clarification |
+Poin-poin berikut merupakan **Observability & Logging Governance** yang ditetapkan oleh arsitek. Beberapa nilainya **tidak boleh di-hardcode** karena merupakan kebijakan organisasi.
+
+## 38.1 Log Retention Policy
+
+### Keputusan
+
+Product Catalog menghasilkan log sesuai standar organisasi.
+
+Retention log mengikuti kebijakan organisasi atau platform observability.
+
+Baseline yang direkomendasikan:
+
+| Log Type | Minimum Retention |
+|----------|-------------------|
+| Application Log | 30 Hari |
+| Audit Log | 7 Tahun atau sesuai regulasi |
+| Security Log | 1 Tahun |
+| Access Log | 90 Hari |
+
+### Rationale
+
+- Menghindari penggunaan storage yang berlebihan.
+- Memenuhi kebutuhan investigasi operasional.
+- Audit mengikuti regulasi industri asuransi.
+
+**Status:** ✅ Resolved
 
 ---
 
-# 39. Traceability
+## 38.2 Centralized Logging Platform
+
+### Keputusan
+
+Product Catalog **tidak bergantung pada platform logging tertentu**.
+
+Service menghasilkan log dalam format JSON terstruktur.
+
+Platform yang didukung:
+
+- ELK Stack (Elasticsearch, Logstash, Kibana)
+- OpenSearch
+- Grafana Loki
+- Splunk
+- Datadog
+- Cloud Logging
+
+> **Catatan:** Product Catalog menghasilkan structured JSON log dan **kompatibel dengan centralized logging platform yang digunakan organisasi**. Aplikasi tidak boleh memiliki ketergantungan terhadap vendor observability.
+
+### Rationale
+
+Aplikasi bersifat vendor agnostic.
+
+**Status:** ✅ Resolved
+
+---
+
+## 38.3 Log Archiving Policy
+
+### Keputusan
+
+Log archiving merupakan tanggung jawab platform observability.
+
+Application tidak melakukan proses archive.
+
+Contoh implementasi:
+
+```
+Application
+
+↓
+
+Log Collector
+
+↓
+
+Central Logging
+
+↓
+
+Cold Storage
+
+↓
+
+Retention Policy
+```
+
+### Rationale
+
+- Memisahkan concern aplikasi dan operasional.
+- Mengurangi kompleksitas aplikasi.
+
+**Status:** ✅ Resolved
+
+---
+
+## 38.4 PII Masking Standard
+
+### Keputusan
+
+Product Catalog wajib melakukan masking terhadap seluruh data sensitif yang ditulis ke log.
+
+Contoh:
+
+| Data | Logging |
+|------|---------|
+| JWT | Masked |
+| Access Token | Masked |
+| Authorization Header | Masked |
+| Password | Never Logged |
+| API Key | Masked |
+| Secret | Never Logged |
+
+Contoh:
+
+```
+Authorization: Bearer ********
+```
+
+atau
+
+```
+Authorization: Bearer eyJhb...
+```
+
+### Rationale
+
+Mengurangi risiko kebocoran data sensitif.
+
+**Status:** ✅ Resolved
+
+---
+
+## 38.5 Request Body Logging Policy
+
+### Keputusan
+
+Request Body tidak dicatat secara default.
+
+Yang dicatat:
+
+- HTTP Method
+- URI
+- Response Status
+- Processing Time
+- Correlation ID
+- Trace ID
+- User ID
+- Client ID
+
+Request Body hanya boleh dicatat apabila:
+
+- Debug Mode aktif, atau
+- Investigation Mode yang telah disetujui.
+
+Data sensitif tetap wajib dimasking.
+
+### Rationale
+
+- Mengurangi ukuran log.
+- Melindungi data sensitif.
+- Memenuhi prinsip least exposure.
+
+**Status:** ✅ Resolved
+
+---
+
+## 38.6 Security Event Retention
+
+### Keputusan
+
+Security Event merupakan bagian dari Security Audit.
+
+Minimal yang dicatat:
+
+- Authentication Failure
+- Authorization Failure
+- Invalid JWT
+- Invalid Signature
+- Access Denied
+- Suspicious Request
+
+Retention mengikuti kebijakan organisasi.
+
+Baseline:
+
+| Event | Minimum Retention |
+|-------|-------------------|
+| Authentication | 1 Tahun |
+| Authorization | 1 Tahun |
+| Access Denied | 1 Tahun |
+| Security Incident | Sesuai Incident Response Policy |
+
+### Rationale
+
+Mendukung forensic analysis dan security investigation.
+
+**Status:** ✅ Resolved
+
+---
+
+# 39. Logging Governance Summary
+
+| Area | Decision |
+|------|----------|
+| Log Format | Structured JSON |
+| Logging Framework | SLF4J + Logback |
+| Central Logging | Vendor Agnostic |
+| Log Retention | Mengikuti kebijakan organisasi |
+| Audit Retention | Minimal 7 Tahun atau sesuai regulasi |
+| Security Log | Minimal 1 Tahun |
+| Request Body Logging | Disabled secara default |
+| Response Body Logging | Tidak dicatat |
+| Sensitive Data | Masking / Never Logged |
+| Correlation ID | Mandatory |
+| Trace ID | Mandatory |
+| Log Archiving | Platform Responsibility |
+
+---
+
+# 40. Traceability
 
 | BRD | FSD | Logging | Component | Test Case |
 | ----- | ----- | ---------- | ----------- | ----------- |
@@ -722,7 +905,7 @@ public class CorrelationIdFilter
 
 ---
 
-# 40. Next Document
+# 41. Next Document
 
 **TSD_12_OBSERVABILITY.md**
 

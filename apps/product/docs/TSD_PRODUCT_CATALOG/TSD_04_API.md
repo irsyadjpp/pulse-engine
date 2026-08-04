@@ -745,15 +745,17 @@ JSON
 
 # 22. Idempotency
 
-| API | Idempotent |
-| ------ | ------------ |
-| GET | ✔ |
-| PUT | ✔ |
-| POST Create | ✖ |
-| Publish | ✔* |
-| Archive | ✔* |
+## API Idempotency Policy
 
-\* Mengembalikan representasi state yang sama jika resource sudah berada pada status tujuan, tanpa membuat perubahan tambahan.
+| Operation                    | Idempotent                                                                                         |
+| ---------------------------- | -------------------------------------------------------------------------------------------------- |
+| GET                          | ✔                                                                                                  |
+| POST (Create)                | ✖                                                                                                  |
+| PUT                          | ✔                                                                                                  |
+| DELETE (Soft Delete/Archive) | ✔                                                                                                  |
+| Publish                      | ✔ (publish ulang terhadap versi yang sama mengembalikan hasil yang sama, bukan membuat versi baru) |
+
+> **Catatan:** Publish ulang terhadap versi yang sama mengembalikan representasi state yang sama jika resource sudah berada pada status tujuan, tanpa membuat perubahan tambahan dan tanpa membuat versi baru.
 
 ---
 
@@ -821,20 +823,238 @@ Tidak mengubah kontrak API existing.
 
 ---
 
-# 28. Requires Functional Clarification
+# 28. API Governance Decisions
 
-| Item | Status |
-| ------ | -------- |
-| API Rate Limiting | Requires Functional Clarification |
-| Maximum Page Size | Requires Functional Clarification |
-| Batch Create/Update API | Requires Functional Clarification |
-| Partial Update (PATCH) | Requires Functional Clarification |
-| API Deprecation Policy | Requires Functional Clarification |
-| ETag diwajibkan atau opsional | Requires Functional Clarification |
+Poin-poin berikut merupakan **API Governance Decisions** yang ditetapkan sebagai standar API agar seluruh tim (Backend, Frontend, Mobile, QA, Integration) memiliki kontrak yang konsisten. Bukan merupakan business requirement sehingga tidak berstatus *Requires Functional Clarification*.
+
+## 28.1 API Rate Limiting
+
+### Keputusan
+
+Rate limiting diterapkan pada **API Gateway atau API Management Layer**, bukan di dalam Product Catalog Service.
+
+### Baseline
+
+| Consumer | Rate Limit |
+|----------|------------|
+| Internal Service | Tidak dibatasi (Trusted Network) |
+| Back Office UI | 300 request/menit per user |
+| External Consumer | 100 request/menit per client |
+| Anonymous | Tidak diizinkan |
+
+### Response
+
+Apabila limit terlampaui:
+
+```http
+HTTP/1.1 429 Too Many Requests
+Retry-After: 60
+```
+
+```json
+{
+  "timestamp": "2026-08-04T10:15:00Z",
+  "success": false,
+  "error": {
+    "code": "RATE_LIMIT_EXCEEDED",
+    "message": "API rate limit exceeded."
+  }
+}
+```
+
+### Rationale
+
+- Melindungi service dari abuse.
+- Implementasi dilakukan pada API Gateway sehingga aplikasi tetap stateless.
+
+**Status:** ✅ Resolved
 
 ---
 
-# 29. Next Document
+## 28.2 Maximum Page Size
+
+### Keputusan
+
+Semua endpoint yang mendukung pagination wajib mengikuti standar berikut.
+
+| Parameter | Default | Maximum |
+|-----------|---------|---------|
+| page | 0 | - |
+| size | 20 | 100 |
+
+Apabila `size > 100`, service mengembalikan:
+
+```http
+400 Bad Request
+```
+
+### Rationale
+
+- Menghindari query besar yang membebani database.
+- Menjaga performa API tetap konsisten.
+
+**Status:** ✅ Resolved
+
+---
+
+## 28.3 Batch Create / Update API
+
+### Keputusan
+
+Tidak disediakan pada versi pertama Product Catalog.
+
+Seluruh operasi dilakukan per resource.
+
+Contoh:
+
+```
+POST /products
+
+PUT /products/{id}
+```
+
+Bukan:
+
+```
+POST /products/batch
+
+PUT /products/batch
+```
+
+### Alasan
+
+- Mengurangi kompleksitas transaksi.
+- Menghindari partial failure.
+- Mempermudah audit.
+- Mempermudah optimistic locking.
+
+Jika kebutuhan bulk muncul di masa depan, akan dibuat API khusus dengan asynchronous processing.
+
+**Status:** ✅ Resolved
+
+---
+
+## 28.4 Partial Update (PATCH)
+
+### Keputusan
+
+PATCH tidak digunakan.
+
+Seluruh update menggunakan HTTP PUT.
+
+Contoh:
+
+```
+PUT /products/{id}
+
+PUT /products/{id}/coverages
+
+PUT /products/{id}/benefits
+```
+
+### Rationale
+
+- Konsisten dengan TSD.
+- Idempotent.
+- Payload lebih mudah divalidasi.
+- Mengurangi kompleksitas merge logic.
+- Lebih sederhana untuk optimistic locking.
+
+**Status:** ✅ Resolved
+
+---
+
+## 28.5 API Deprecation Policy
+
+### Keputusan
+
+Versioning API menggunakan URI Versioning.
+
+Contoh:
+
+```
+/api/v1/products
+
+/api/v2/products
+```
+
+Kebijakan:
+
+- Endpoint deprecated tetap tersedia minimal 12 bulan.
+- Endpoint deprecated harus memberikan header:
+
+```
+Deprecation: true
+Sunset: Tue, 01 Aug 2028 00:00:00 GMT
+```
+
+Dokumentasi OpenAPI wajib menandai endpoint sebagai:
+
+```yaml
+deprecated: true
+```
+
+### Rationale
+
+- Memberikan waktu migrasi bagi consumer.
+- Menghindari breaking change mendadak.
+
+**Status:** ✅ Resolved
+
+---
+
+## 28.6 ETag
+
+### Keputusan
+
+ETag bersifat opsional.
+
+Optimistic Locking menggunakan field `version` pada payload dan database sebagai mekanisme utama.
+
+Apabila diperlukan oleh API Gateway atau CDN, ETag dapat ditambahkan tanpa mengubah kontrak API.
+
+Contoh:
+
+```
+ETag: "product-123-v5"
+```
+
+Conditional Request:
+
+```
+If-Match: "product-123-v5"
+```
+
+Namun Product Catalog tidak bergantung pada ETag untuk concurrency control.
+
+### Rationale
+
+- Optimistic Locking di level domain sudah mencukupi.
+- Menghindari duplikasi mekanisme konkurensi.
+- Tetap membuka peluang caching HTTP di masa depan.
+
+**Status:** ✅ Resolved
+
+---
+
+# 29. API Governance Summary
+
+| Area | Decision |
+|------|----------|
+| Rate Limiting | API Gateway, bukan aplikasi |
+| Pagination Default | 20 |
+| Maximum Page Size | 100 |
+| Batch API | Tidak disediakan pada versi pertama |
+| Partial Update | Tidak menggunakan PATCH |
+| Update Strategy | PUT penuh (idempotent) |
+| API Versioning | URI Versioning (`/api/v1`) |
+| Deprecation Policy | Minimum 12 bulan sebelum penghapusan |
+| ETag | Opsional, bukan mekanisme utama concurrency |
+| Optimistic Locking | Mandatory menggunakan field `version` |
+
+---
+
+# 30. Next Document
 
 **TSD_05_BUSINESS_RULE_IMPLEMENTATION.md**
 

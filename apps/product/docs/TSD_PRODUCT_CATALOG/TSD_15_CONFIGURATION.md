@@ -115,32 +115,20 @@ Default Value
 
 ```mermaid
 flowchart TD
+    Developer[Developer]
+    GitRepository[(Git Repository)]
+    DockerImage[Docker Image]
+    ConfigMap[ConfigMap]
+    Secret[Secret]
+    Kubernetes[Kubernetes]
+    Application[Application]
 
-Developer
-
-Git Repository
-
-Docker Image
-
-ConfigMap
-
-Secret
-
-Kubernetes
-
-Application
-
-Developer --> GitRepository
-
-GitRepository --> DockerImage
-
-ConfigMap --> Kubernetes
-
-Secret --> Kubernetes
-
-DockerImage --> Kubernetes
-
-Kubernetes --> Application
+    Developer -->|Commit| GitRepository
+    GitRepository -->|Build| DockerImage
+    ConfigMap -->|Mount non-sensitive config| Kubernetes
+    Secret -->|Inject sensitive config| Kubernetes
+    DockerImage -->|Deploy| Kubernetes
+    Kubernetes -->|Run| Application
 ```
 
 ---
@@ -551,13 +539,11 @@ metadata:
 
 # 31. Feature Flag
 
-BRD tidak mendefinisikan Feature Flag.
+Feature Flag bersifat **opsional** (lihat Section 41.3).
 
-Status.
+Apabila organisasi menggunakan Feature Flag Platform, Product Catalog harus dapat berintegrasi tanpa perubahan Domain Layer.
 
-```text
-Requires Functional Clarification
-```
+Versi pertama Product Catalog tidak memiliki dependency terhadap platform Feature Flag tertentu.
 
 ---
 
@@ -606,13 +592,11 @@ Application tidak boleh berjalan apabila:
 
 # 35. Configuration Reload
 
-Dynamic configuration **tidak didefinisikan dalam BRD**.
+Dynamic Configuration Reload **tidak menjadi requirement aplikasi** (lihat Section 41.4).
 
-Status.
+Perubahan konfigurasi dilakukan melalui mekanisme deployment atau restart yang dikendalikan oleh platform.
 
-```
-Requires Functional Clarification
-```
+Apabila platform mendukung dynamic reload, aplikasi dapat memanfaatkannya tanpa perubahan pada Domain Layer.
 
 ---
 
@@ -673,19 +657,190 @@ Tidak diperbolehkan.
 
 ---
 
-# 41. Requires Functional Clarification
+# 41. Configuration Governance
 
-| Item | Status |
-| ------ | -------- |
-| Secret Manager (Vault, AWS Secrets Manager, Azure Key Vault, dll.) | Requires Functional Clarification |
-| Configuration Server | Requires Functional Clarification |
-| Feature Flag Platform | Requires Functional Clarification |
-| Dynamic Configuration Reload | Requires Functional Clarification |
-| Encryption Property | Requires Functional Clarification |
+Poin-poin berikut merupakan **Platform Configuration Decisions**. Product Catalog tidak mengunci organisasi pada produk tertentu, tetapi mendefinisikan capability yang dibutuhkan.
+
+## 41.1 Secret Management
+
+### Keputusan
+
+Product Catalog tidak menyimpan secret di source code maupun file konfigurasi.
+
+Seluruh secret harus dikelola oleh Secret Management Platform yang mendukung injection ke aplikasi.
+
+Platform yang didukung antara lain:
+
+- HashiCorp Vault
+- AWS Secrets Manager
+- Azure Key Vault
+- Google Secret Manager
+- Kubernetes Secret
+- Enterprise Secret Management lain yang setara
+
+Contoh secret:
+
+- Database Password
+- Redis Password
+- OAuth2 Client Secret
+- JWT Public Key (jika diperlukan)
+- API Key
+
+### Rationale
+
+- Menghindari hardcoded secret.
+- Mengurangi risiko kebocoran credential.
+- Mendukung rotasi secret tanpa perubahan kode.
+
+**Status:** ✅ Resolved
 
 ---
 
-# 42. Traceability
+## 41.2 Configuration Management
+
+### Keputusan
+
+Product Catalog menggunakan externalized configuration sesuai prinsip Twelve-Factor App.
+
+Konfigurasi dapat berasal dari:
+
+- Environment Variable
+- Kubernetes ConfigMap
+- Spring Configuration Import
+- Spring Cloud Config (opsional)
+
+Aplikasi tidak bergantung pada Configuration Server tertentu.
+
+### Rationale
+
+- Vendor agnostic.
+- Mendukung berbagai model deployment.
+- Mempermudah CI/CD.
+
+**Status:** ✅ Resolved
+
+---
+
+## 41.3 Feature Flag
+
+### Keputusan
+
+Feature Flag bersifat opsional.
+
+Apabila organisasi menggunakan Feature Flag Platform, Product Catalog harus dapat berintegrasi tanpa perubahan Domain Layer.
+
+Platform yang dapat digunakan:
+
+- OpenFeature
+- Unleash
+- LaunchDarkly
+- Azure App Configuration
+- ConfigCat
+
+Versi pertama Product Catalog tidak memiliki dependency terhadap platform Feature Flag tertentu.
+
+### Rationale
+
+Feature Flag merupakan capability platform, bukan requirement bisnis.
+
+**Status:** ✅ Resolved
+
+---
+
+## 41.4 Dynamic Configuration Reload
+
+### Keputusan
+
+Dynamic Configuration Reload tidak menjadi requirement aplikasi.
+
+Perubahan konfigurasi dilakukan melalui mekanisme deployment atau restart yang dikendalikan oleh platform.
+
+Apabila platform mendukung dynamic reload (misalnya Spring Cloud Config atau Kubernetes Reload Controller), aplikasi dapat memanfaatkannya tanpa perubahan pada Domain Layer.
+
+### Rationale
+
+- Mengurangi kompleksitas implementasi.
+- Menjaga konsistensi konfigurasi selama runtime.
+- Menghindari perubahan perilaku aplikasi yang tidak terkontrol.
+
+**Status:** ✅ Resolved
+
+---
+
+## 41.5 Configuration Encryption
+
+### Keputusan
+
+Nilai konfigurasi yang bersifat sensitif wajib disimpan dalam bentuk terenkripsi atau dikelola oleh Secret Manager.
+
+Product Catalog tidak mengimplementasikan mekanisme enkripsi konfigurasi sendiri.
+
+Contoh konfigurasi sensitif:
+
+- Database Password
+- Redis Password
+- OAuth Client Secret
+- API Key
+
+Contoh konfigurasi non-sensitif:
+
+- Server Port
+- Pagination Default
+- Cache TTL
+- Logging Level
+
+### Rationale
+
+- Memisahkan konfigurasi sensitif dan non-sensitif.
+- Mengikuti praktik keamanan enterprise.
+- Memanfaatkan kemampuan platform.
+
+**Status:** ✅ Resolved
+
+---
+
+## 41.6 Configuration Hierarchy
+
+Prioritas konfigurasi mengikuti urutan Spring Boot:
+
+```text
+application.yml
+        ↓
+Environment Variable
+        ↓
+Config Import (optional)
+        ↓
+Secret Manager
+```
+
+Prioritas Spring Boot:
+
+1. Environment Variable
+2. JVM System Property
+3. External Configuration (`application.yml`)
+4. Default Configuration
+
+Dengan demikian perilaku aplikasi tetap konsisten di semua environment.
+
+---
+
+# 42. Configuration Governance Summary
+
+| Area | Decision |
+|------|----------|
+| Configuration Style | Externalized Configuration |
+| Secret Storage | Secret Management Platform |
+| Configuration Source | Environment Variable / ConfigMap / Config Import |
+| Configuration Server | Opsional, Vendor Agnostic |
+| Feature Flag | Opsional, Vendor Agnostic |
+| Dynamic Reload | Platform Capability |
+| Sensitive Configuration | Secret Manager |
+| Non-Sensitive Configuration | Environment Variable / ConfigMap |
+| Encryption | Platform Managed |
+
+---
+
+# 43. Traceability
 
 | BRD | FSD | Configuration | Component | Test Case |
 | ----- | ----- | -------------- | ----------- | ----------- |
@@ -697,7 +852,7 @@ Tidak diperbolehkan.
 
 ---
 
-# 43. Next Document
+# 44. Next Document
 
 **TSD_16_DEPLOYMENT.md**
 

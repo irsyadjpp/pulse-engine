@@ -137,18 +137,16 @@ Product Catalog menyediakan:
 
 ```mermaid
 sequenceDiagram
-
-Marketplace->>ProductCatalog
-
-ProductCatalog-->>Marketplace
-
-QuoteService->>ProductCatalog
-
-ProductCatalog-->>QuoteService
-
-ProposalService->>ProductCatalog
-
-ProductCatalog-->>ProposalService
+    participant Marketplace
+    participant QuoteService
+    participant ProposalService
+    participant ProductCatalog
+    Marketplace->>ProductCatalog: GET /products
+    ProductCatalog-->>Marketplace: 200 OK (Published Products)
+    QuoteService->>ProductCatalog: GET /products/{id}
+    ProductCatalog-->>QuoteService: 200 OK (Product Metadata)
+    ProposalService->>ProductCatalog: GET /products/{id}/versions/{version}
+    ProductCatalog-->>ProposalService: 200 OK (Product Version)
 ```
 
 ---
@@ -328,18 +326,10 @@ POST /archive
 
 ```mermaid
 sequenceDiagram
-
-actor Marketplace
-
-participant ProductCatalog
-
-Marketplace->>ProductCatalog
-
-GET Product
-
-ProductCatalog-->>Marketplace
-
-200 OK
+    actor Marketplace
+    participant ProductCatalog
+    Marketplace->>ProductCatalog: GET Product
+    ProductCatalog-->>Marketplace: 200 OK
 ```
 
 ---
@@ -348,18 +338,10 @@ ProductCatalog-->>Marketplace
 
 ```mermaid
 sequenceDiagram
-
-actor Admin
-
-participant ProductCatalog
-
-Admin->>ProductCatalog
-
-Publish Product
-
-ProductCatalog-->>Admin
-
-Published
+    actor Admin
+    participant ProductCatalog
+    Admin->>ProductCatalog: POST /products/{id}/publish
+    ProductCatalog-->>Admin: 200 OK (Published)
 ```
 
 ---
@@ -438,21 +420,18 @@ Tidak Retry:
 
 # 25. Circuit Breaker
 
-Direkomendasikan menggunakan:
+Circuit Breaker diterapkan pada layer Infrastructure (lihat Section 40.3).
 
-```
-Spring Cloud Circuit Breaker
-```
+Implementasi dapat menggunakan:
 
-atau implementasi organisasi yang setara.
+- Spring Cloud Circuit Breaker
+- Resilience4j
+- Service Mesh
+- API Gateway
 
-Status implementasi:
+Business Layer tidak memiliki dependency terhadap library Circuit Breaker.
 
-```
-Requires Functional Clarification
-```
-
-karena BRD tidak mendefinisikannya secara eksplisit.
+Status implementasi: **✅ Resolved**
 
 ---
 
@@ -675,21 +654,209 @@ Diperbolehkan:
 
 ---
 
-# 40. Requires Functional Clarification
+# 40. Integration Architecture Decisions
 
-| Item | Status |
-| ------ | -------- |
-| API Gateway yang digunakan | Requires Functional Clarification |
-| Service Discovery | Requires Functional Clarification |
-| Circuit Breaker Library | Requires Functional Clarification |
-| Retry Policy Organization | Requires Functional Clarification |
-| API Rate Limiting | Requires Functional Clarification |
-| Consumer SLA | Requires Functional Clarification |
-| Event Publishing setelah Publish Product | Requires Functional Clarification |
+Poin-poin berikut merupakan **Integration Architecture Decisions**. Hanya satu poin (Event Publishing) yang memang bergantung pada BRD/FSD.
+
+## 40.1 API Gateway
+
+### Keputusan
+
+Product Catalog tidak bergantung pada API Gateway tertentu.
+
+Service menyediakan REST API yang mengikuti standar HTTP dan OpenAPI 3.1.
+
+Gateway yang didukung antara lain:
+
+- Spring Cloud Gateway
+- Kong Gateway
+- Apigee
+- Azure API Management
+- AWS API Gateway
+- NGINX
+- Envoy
+
+### Rationale
+
+- Menghindari vendor lock-in.
+- Memungkinkan deployment pada berbagai platform.
+- Gateway merupakan tanggung jawab Platform Team.
+
+**Status:** ✅ Resolved
 
 ---
 
-# 41. Traceability
+## 40.2 Service Discovery
+
+### Keputusan
+
+Product Catalog tidak bergantung pada mekanisme Service Discovery tertentu.
+
+Implementasi dapat menggunakan:
+
+- Kubernetes DNS
+- Eureka
+- Consul
+- Service Mesh
+- Static Configuration
+
+Pada deployment Kubernetes, service discovery menggunakan DNS bawaan Kubernetes.
+
+### Rationale
+
+Service Discovery merupakan keputusan deployment.
+
+Aplikasi tidak memiliki dependency terhadap framework tertentu.
+
+**Status:** ✅ Resolved
+
+---
+
+## 40.3 Circuit Breaker
+
+### Keputusan
+
+Circuit Breaker diterapkan pada layer Infrastructure.
+
+Implementasi dapat menggunakan:
+
+- Spring Cloud Circuit Breaker
+- Resilience4j
+- Service Mesh
+- API Gateway
+
+Business Layer tidak memiliki dependency terhadap library Circuit Breaker.
+
+### Rationale
+
+- Menjaga Domain Layer tetap bersih.
+- Menghindari coupling terhadap library tertentu.
+
+**Status:** ✅ Resolved
+
+---
+
+## 40.4 Retry Policy
+
+### Keputusan
+
+Retry hanya dilakukan terhadap error yang bersifat sementara (transient failure).
+
+Retry tidak dilakukan untuk Business Exception.
+
+| HTTP Status | Retry |
+|-------------|-------|
+| 408 Request Timeout | Ya |
+| 429 Too Many Requests | Ya (mengikuti Retry-After) |
+| 500 Internal Server Error | Ya (terbatas) |
+| 502 Bad Gateway | Ya |
+| 503 Service Unavailable | Ya |
+| 504 Gateway Timeout | Ya |
+| 400 Bad Request | Tidak |
+| 401 Unauthorized | Tidak |
+| 403 Forbidden | Tidak |
+| 404 Not Found | Tidak |
+| 409 Conflict | Tidak |
+| 422 Unprocessable Entity | Tidak |
+
+Retry menggunakan Exponential Backoff.
+
+### Rationale
+
+Menghindari retry terhadap kesalahan bisnis yang tidak dapat diperbaiki secara otomatis.
+
+**Status:** ✅ Resolved
+
+---
+
+## 40.5 API Rate Limiting
+
+### Keputusan
+
+API Rate Limiting diterapkan pada API Gateway.
+
+Product Catalog tidak mengimplementasikan rate limiting pada level aplikasi.
+
+### Rationale
+
+- Stateless
+- Konsisten untuk seluruh microservice
+- Mudah dikonfigurasi oleh Platform Team
+
+**Status:** ✅ Resolved
+
+---
+
+## 40.6 Consumer SLA
+
+### Keputusan
+
+Product Catalog tidak menetapkan SLA masing-masing consumer.
+
+Seluruh consumer menggunakan kontrak API yang sama.
+
+Target response time implementasi:
+
+| API Type | Target |
+|----------|--------|
+| GET | ≤ 300 ms |
+| SEARCH | ≤ 500 ms |
+| WRITE | ≤ 500 ms |
+| PUBLISH | ≤ 2 detik |
+
+SLA resmi mengikuti kebijakan organisasi.
+
+### Rationale
+
+SLA merupakan komitmen layanan organisasi, bukan kontrak antar service.
+
+**Status:** ✅ Resolved
+
+---
+
+## 40.7 Event Publishing
+
+### Keputusan
+
+Versi pertama Product Catalog menggunakan REST API sebagai mekanisme integrasi.
+
+Tidak ada kewajiban mempublikasikan event setelah Product Published.
+
+Apabila di masa depan diperlukan event-driven architecture, Product Catalog dapat menerbitkan Integration Event, misalnya:
+
+- ProductPublished
+- ProductArchived
+- ProductVersionCreated
+
+**Arsitektur mendukung penambahan Integration Event di masa depan tanpa mengubah Domain Model maupun API, apabila terdapat kebutuhan bisnis baru.** Event tersebut tidak menjadi bagian dari ruang lingkup implementasi saat ini.
+
+### Rationale
+
+- BRD dan FSD saat ini hanya mendefinisikan integrasi melalui REST API.
+- Menambahkan event publishing tanpa kebutuhan bisnis akan memperluas scope implementasi.
+- Tidak ada requirement Kafka, Outbox Pattern, atau Event Bus (konsisten dengan seluruh dokumen sebelumnya).
+
+**Status:** ✅ Resolved
+
+---
+
+# 41. Integration Governance Summary
+
+| Area | Decision |
+|------|----------|
+| Integration Style | REST API |
+| API Contract | OpenAPI 3.1 |
+| API Gateway | Vendor Agnostic |
+| Service Discovery | Deployment Responsibility |
+| Circuit Breaker | Infrastructure Layer |
+| Retry | Exponential Backoff untuk Transient Error |
+| Rate Limiting | API Gateway |
+| Consumer SLA | Organization Responsibility |
+| Event Publishing | Tidak menjadi requirement versi pertama |
+
+---
+
+# 42. Traceability
 
 | BRD | FSD | Integration | API | Test Case |
 | ----- | ----- | ------------- | ----- | ----------- |
@@ -701,7 +868,7 @@ Diperbolehkan:
 
 ---
 
-# 42. Next Document
+# 43. Next Document
 
 **TSD_15_CONFIGURATION.md**
 

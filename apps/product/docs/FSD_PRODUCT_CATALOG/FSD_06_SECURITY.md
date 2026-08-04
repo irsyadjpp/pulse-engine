@@ -116,7 +116,7 @@ Contoh:
 - Auth0
 - Azure AD
 
-**Assumption:** BRD hanya menyebut OAuth2/JWT dan tidak menentukan Identity Provider tertentu. Contoh di atas bukan bagian dari ruang lingkup BRD. :contentReference[oaicite:1]{index=1}
+**Catatan:** BRD hanya menyebut OAuth2/JWT dan tidak menentukan Identity Provider tertentu. Product Catalog bersifat **vendor-agnostic** (lihat Security Principle di bawah).
 
 ---
 
@@ -283,7 +283,7 @@ product.publish
 audit.read
 ```
 
-**Assumption:** BRD tidak mendefinisikan struktur OAuth Scope. Scope di atas merupakan rekomendasi implementasi dan perlu disesuaikan dengan standar IAM perusahaan.
+**Catatan:** BRD tidak mendefinisikan struktur OAuth Scope. Scope di atas merupakan rekomendasi implementasi dan perlu disesuaikan dengan standar IAM perusahaan.
 
 ---
 
@@ -511,16 +511,35 @@ Requirement mengikuti NFR BRD. :contentReference[oaicite:3]{index=3}
 
 ---
 
-# 24. Open Items / Business Clarification
+# 24. Security Decisions & Functional Clarification
 
-| ID | Question |
-| ---- | ---------- |
-| OI-01 | Identity Provider apa yang akan digunakan (misalnya Keycloak, Azure AD, atau IAM internal)? |
-| OI-02 | Apakah Marketplace menggunakan service account atau JWT atas nama end-user? |
-| OI-03 | Apakah Business User diperbolehkan melihat Audit History atau hanya Product Administrator? |
-| OI-04 | Berapa masa berlaku Access Token dan Refresh Token? BRD tidak mendefinisikannya. |
-| OI-05 | Apakah diperlukan IP Whitelisting untuk komunikasi antar service? |
-| OI-06 | Apakah Product Catalog memerlukan mTLS selain TLS 1.3 untuk komunikasi internal? |
+Selama penyusunan FSD dilakukan beberapa keputusan desain keamanan untuk memastikan Product Catalog memenuhi standar enterprise tanpa bergantung pada implementasi platform tertentu.
+
+## 24.1 Security Decisions
+
+| ID    | Decision                                                                                                                       | Status   |
+| ----- | ------------------------------------------------------------------------------------------------------------------------------ | -------- |
+| SD-01 | Marketplace dan service consumer menggunakan **OAuth2 Client Credentials (Service Account)** untuk komunikasi machine-to-machine | Approved |
+| SD-02 | Audit History dapat diakses oleh **Product Administrator** dan **Business User** sesuai RBAC                                    | Approved |
+| SD-03 | **IP Whitelisting** merupakan kontrol infrastruktur dan tidak menjadi ketergantungan aplikasi                                    | Approved |
+| SD-04 | Product Catalog mewajibkan **TLS 1.3**, sedangkan **mTLS** bersifat opsional dan mengikuti kebijakan platform                    | Approved |
+
+## 24.2 Functional Clarification
+
+| ID    | Item                                                                                                                                                                                                                             | Status                       |
+| ----- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------- |
+| FC-01 | Identity Provider (Keycloak, Azure AD, IAM Internal, atau lainnya) ditentukan oleh arsitektur IAM organisasi                                                                                                                      | Requires Functional Clarification |
+| FC-02 | Masa berlaku Access Token dan Refresh Token mengikuti kebijakan Identity Provider dan Security Team organisasi                                                                                                                    | Requires Functional Clarification |
+
+## 24.3 Security Principle
+
+```text
+Product Catalog tidak memiliki ketergantungan terhadap implementasi Identity Provider tertentu.
+
+Seluruh autentikasi dilakukan menggunakan standar OAuth2 dan JWT sehingga aplikasi dapat diintegrasikan dengan Identity Provider apa pun yang sesuai dengan standar tersebut.
+```
+
+Prinsip ini menjaga FSD tetap konsisten dengan TSD_09 dan menghindari penguncian desain pada produk tertentu seperti Keycloak, Azure AD, atau Auth0.
 
 ---
 

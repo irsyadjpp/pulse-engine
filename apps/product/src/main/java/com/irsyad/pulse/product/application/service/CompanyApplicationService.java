@@ -6,6 +6,8 @@ import com.irsyad.pulse.product.application.port.CompanyRepositoryPort;
 import com.irsyad.pulse.product.application.query.company.SearchCompanyQuery;
 import com.irsyad.pulse.product.domain.company.Company;
 import com.irsyad.pulse.product.domain.shared.CompanyStatus;
+import com.irsyad.pulse.product.shared.exception.CompanyNotFoundException;
+import com.irsyad.pulse.product.shared.exception.DuplicateCompanyCodeException;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.stereotype.Service;
 
@@ -32,7 +34,7 @@ public class CompanyApplicationService {
     public Company create(CreateCompanyCommand command) {
         this.companyRepositoryPort.findByCompanyCode(command.companyCode())
                 .ifPresent(existing -> {
-                    throw new IllegalArgumentException("Company Code already exists.");
+                    throw new DuplicateCompanyCodeException("Company Code already exists.");
                 });
         Company company = Company.builder()
                 .companyId(UUID.randomUUID())
@@ -54,7 +56,7 @@ public class CompanyApplicationService {
     @Transactional
     public Company update(UpdateCompanyCommand command) {
         Company company = this.companyRepositoryPort.findById(command.companyId())
-                .orElseThrow(() -> new IllegalArgumentException("Company not found."));
+                .orElseThrow(() -> new CompanyNotFoundException("Company not found."));
         company.updateProfile(command.companyName(), command.logoUrl(), command.contactInformation());
         return this.companyRepositoryPort.save(company);
     }
@@ -62,7 +64,7 @@ public class CompanyApplicationService {
     @Transactional
     public Company activate(UUID companyId) {
         Company company = this.companyRepositoryPort.findById(companyId)
-                .orElseThrow(() -> new IllegalArgumentException("Company not found."));
+                .orElseThrow(() -> new CompanyNotFoundException("Company not found."));
         company.activate();
         return this.companyRepositoryPort.save(company);
     }
@@ -70,7 +72,7 @@ public class CompanyApplicationService {
     @Transactional
     public Company deactivate(UUID companyId) {
         Company company = this.companyRepositoryPort.findById(companyId)
-                .orElseThrow(() -> new IllegalArgumentException("Company not found."));
+                .orElseThrow(() -> new CompanyNotFoundException("Company not found."));
         company.deactivate();
         return this.companyRepositoryPort.save(company);
     }
@@ -78,7 +80,7 @@ public class CompanyApplicationService {
     @Transactional(readOnly = true)
     public Company detail(UUID companyId) {
         return this.companyRepositoryPort.findById(companyId)
-                .orElseThrow(() -> new IllegalArgumentException("Company not found."));
+                .orElseThrow(() -> new CompanyNotFoundException("Company not found."));
     }
 
     @Transactional(readOnly = true)

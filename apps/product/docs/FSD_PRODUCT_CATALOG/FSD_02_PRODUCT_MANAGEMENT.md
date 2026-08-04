@@ -132,7 +132,7 @@ Administrator membuat produk baru untuk perusahaan asuransi.
 
 Jika Product Code telah digunakan pada perusahaan yang sama maka penyimpanan ditolak.
 
-**Assumption:** BRD tidak mendefinisikan apakah Product Code bersifat unik secara global atau per perusahaan. FSD ini mengasumsikan unik per perusahaan dan perlu dikonfirmasi.
+Product Code unik dalam lingkup Insurance Company (`company_id + product_code`) (lihat BD-01).
 
 ---
 
@@ -164,7 +164,7 @@ Administrator memperbarui informasi dasar produk.
 * Product Code
 * Company
 
-**Assumption:** BRD tidak menjelaskan apakah perpindahan kepemilikan produk antar perusahaan diperbolehkan. FSD menganggap tidak diperbolehkan karena BR-006 menyatakan satu produk dimiliki oleh satu perusahaan.
+Perpindahan kepemilikan produk antar perusahaan tidak diperbolehkan karena BR-006 menyatakan satu produk dimiliki oleh satu perusahaan.
 
 ---
 
@@ -242,7 +242,7 @@ Hal ini memenuhi BR-05.
 
 Produk yang telah diarsipkan tidak dapat dipublikasikan kembali.
 
-**Assumption:** BRD tidak mendefinisikan transisi dari Archived ke Published. FSD ini memilih status Archived sebagai terminal state dan keputusan ini perlu divalidasi dengan Business Owner.
+Product yang telah **Archived** tidak dapat dibuatkan versi baru dan dianggap mencapai **terminal state** (lihat BD-04).
 
 ---
 
@@ -378,16 +378,41 @@ API-->>Admin: Product Published
 
 ---
 
-# 16. Open Items / Business Clarification
+# 16. Business Decisions & Functional Clarification
 
-| ID    | Pertanyaan                                                                                                                                                             |
-| ----- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| OI-01 | Apakah Product Code unik secara global atau per perusahaan?                                                                                                            |
-| OI-02 | Apakah Effective Date boleh lebih kecil dari tanggal Publish?                                                                                                          |
-| OI-03 | Apakah Expiry Date wajib diisi atau dapat kosong?                                                                                                                      |
-| OI-04 | Apakah produk Archived dapat dibuatkan versi baru?                                                                                                                     |
-| OI-05 | Apakah proses "Submit for Approval" melibatkan workflow persetujuan atau hanya langkah operasional? BRD belum mendefinisikan aktor approval maupun aturan transisinya. |
+Selama penyusunan FSD dilakukan beberapa keputusan desain untuk menghilangkan ambiguitas tanpa memperluas ruang lingkup bisnis.
+
+## 16.1 Business Decisions
+
+| ID    | Decision                                                                                                                       | Status   |
+| ----- | ------------------------------------------------------------------------------------------------------------------------------ | -------- |
+| BD-01 | Product Code unik dalam lingkup Insurance Company (`company_id + product_code`)                                                | Approved |
+| BD-02 | Effective Date tidak boleh lebih kecil dari Publish Date                                                                       | Approved |
+| BD-03 | Expiry Date bersifat opsional (nullable)                                                                                       | Approved |
+| BD-04 | Product yang telah Archived tidak dapat dibuatkan versi baru dan dianggap mencapai terminal state                              | Approved |
+
+## 16.2 Functional Clarification
+
+| ID    | Item                                                                                                                                                                                                                             | Status                       |
+| ----- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------- |
+| FC-01 | BRD belum mendefinisikan apakah proses Submit for Approval memerlukan workflow persetujuan (approver, approval level, reject flow, SLA, dan escalation). Apabila approval diperlukan, BRD dan FSD harus diperbarui karena akan menambah business process di luar lifecycle Product saat ini. | Requires Functional Clarification |
 
 ### Catatan Arsitektur
 
 Pada implementasi DDD nantinya, **Product** akan menjadi **Aggregate Root**. Seluruh operasi Create, Update, Publish, Archive, dan Create New Version harus dieksekusi melalui aggregate ini untuk memastikan seluruh Business Rules (BR-001 s.d. BR-012) tervalidasi di satu tempat tanpa duplikasi logika.
+
+**Catatan Lifecycle:** Berdasarkan BRD, lifecycle Product Catalog cukup sederhana:
+
+```text
+Draft
+   │
+Publish
+   │
+Published
+   │
+Archive
+   │
+Archived
+```
+
+Approval workflow adalah **fitur Enterprise Product Governance**, bukan bagian dari Product Catalog yang telah didefinisikan di BRD. Jika nanti bisnis memang membutuhkan approval, sebaiknya dibuat sebagai **revisi BRD/FSD** dengan use case, aktor, business rule, dan state machine yang baru, bukan ditambahkan sebagai asumsi implementasi.

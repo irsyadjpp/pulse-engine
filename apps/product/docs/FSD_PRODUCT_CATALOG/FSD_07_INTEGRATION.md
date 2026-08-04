@@ -331,7 +331,7 @@ GET /api/v1/products
 
 Reporting memperoleh metadata Product sesuai kebutuhan laporan.
 
-**Assumption:** BRD tidak menjelaskan apakah Reporting hanya membaca Published Product atau seluruh status Product.
+Reporting dapat mengakses seluruh status Product (lihat ID-03).
 
 ---
 
@@ -471,20 +471,13 @@ Product Catalog mengikuti NFR:
 
 ```mermaid
 sequenceDiagram
-
-actor Consumer
-
-participant ProductCatalog
-
-database PostgreSQL
-
-Consumer->>ProductCatalog: GET Product
-
-ProductCatalog->>PostgreSQL: SELECT Product
-
-PostgreSQL-->>ProductCatalog: Product
-
-ProductCatalog-->>Consumer: JSON
+    actor Consumer
+    participant ProductCatalog
+    participant DB[(PostgreSQL)]
+    Consumer->>ProductCatalog: GET Product
+    ProductCatalog->>DB: SELECT Product
+    DB-->>ProductCatalog: Product
+    ProductCatalog-->>Consumer: JSON
 ```
 
 ---
@@ -493,20 +486,13 @@ ProductCatalog-->>Consumer: JSON
 
 ```mermaid
 sequenceDiagram
-
-actor Consumer
-
-participant ProductCatalog
-
-database PostgreSQL
-
-Consumer->>ProductCatalog: GET Product Version
-
-ProductCatalog->>PostgreSQL: SELECT Version
-
-PostgreSQL-->>ProductCatalog: Snapshot
-
-ProductCatalog-->>Consumer: JSON
+    actor Consumer
+    participant ProductCatalog
+    participant DB[(PostgreSQL)]
+    Consumer->>ProductCatalog: GET Product Version
+    ProductCatalog->>DB: SELECT Version
+    DB-->>ProductCatalog: Snapshot
+    ProductCatalog-->>Consumer: JSON
 ```
 
 ---
@@ -555,15 +541,47 @@ ProductCatalog-->>Consumer: JSON
 
 ---
 
-# 24. Open Items / Business Clarification
+# 24. Integration Decisions & Functional Clarification
 
-| ID | Question |
-| ------ | --------------------------- |
-| OI-01 | Apakah Product Catalog menyediakan API khusus untuk Marketplace (Public API) atau seluruh consumer menggunakan endpoint yang sama? |
-| OI-02 | Apakah diperlukan API bulk untuk mengambil banyak Product sekaligus? |
-| OI-03 | Apakah Reporting membutuhkan incremental data atau full extraction? |
-| OI-04 | Apakah diperlukan API khusus untuk sinkronisasi Product oleh consumer? |
-| OI-05 | Apakah Product Catalog akan menggunakan API Gateway untuk seluruh consumer atau terdapat direct service call dalam internal network? |
+Selama penyusunan FSD dilakukan beberapa keputusan desain integrasi untuk memastikan Product Catalog dapat digunakan secara konsisten oleh seluruh consumer tanpa memperluas ruang lingkup bisnis.
+
+## 24.1 Integration Decisions
+
+| ID    | Decision                                                                                                                       | Status   |
+| ----- | ------------------------------------------------------------------------------------------------------------------------------ | -------- |
+| ID-01 | Product Catalog menyediakan **API Back Office** dan **Public Catalog API** yang terpisah sesuai kebutuhan consumer              | Approved |
+| ID-02 | Product Catalog menyediakan **Bulk Read API** untuk mengambil banyak Product dalam satu permintaan                             | Approved |
+| ID-03 | Reporting mendukung **Full Extraction** dan **Incremental Extraction** berdasarkan waktu perubahan (`updatedAfter`)             | Approved |
+| ID-04 | Sinkronisasi Product menggunakan **endpoint query yang sudah ada** dan tidak memerlukan API sinkronisasi khusus                 | Approved |
+
+## 24.2 Functional Clarification
+
+| ID    | Item                                                                                                                                                                                                                             | Status                       |
+| ----- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------- |
+| FC-01 | Pola komunikasi antar service (API Gateway, Service Mesh, Internal Load Balancer, atau Direct Service Call) mengikuti arsitektur enterprise organisasi                                                                            | Requires Functional Clarification |
+
+## 24.3 Bulk Read API Strategy
+
+Karena pada TSD_04_API telah ditetapkan prinsip **RESTful**, endpoint `POST /api/v1/catalog/products/batch` layak digunakan **hanya jika** jumlah `productCode` cukup besar sehingga parameter query tidak lagi praktis (misalnya ratusan kode).
+
+Untuk kebutuhan umum, lebih RESTful jika tetap mendukung:
+
+```text
+GET /api/v1/catalog/products?productCode=PA001,PA002,PA003
+```
+
+atau
+
+```text
+GET /api/v1/catalog/products?productCode=PA001&productCode=PA002&productCode=PA003
+```
+
+Strategi yang direkomendasikan:
+
+1. **GET dengan parameter berulang atau daftar** sebagai mekanisme utama untuk mengambil banyak produk.
+2. **POST `/batch`** sebagai endpoint alternatif hanya jika ada kebutuhan mengirim daftar yang sangat besar sehingga melampaui batas panjang URL atau kebutuhan payload yang lebih kompleks.
+
+Pendekatan ini menjaga konsistensi dengan prinsip REST, mengurangi jumlah endpoint khusus, dan tetap memenuhi kebutuhan integrasi consumer.
 
 ---
 

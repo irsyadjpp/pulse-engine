@@ -839,19 +839,220 @@ Archive --> Audit
 
 ---
 
-# 30. Requires Functional Clarification
+# 30. Workflow Decisions
 
-| Item | Status |
-| ------ | -------- |
-| Apakah Publish memerlukan approval sebelum menjadi Published | Requires Functional Clarification |
-| Apakah Archive dapat dibatalkan (Unarchive) | Requires Functional Clarification |
-| Mekanisme locking selain optimistic locking | Requires Functional Clarification |
-| SLA maksimum untuk setiap workflow | Requires Functional Clarification |
-| Apakah terdapat workflow bulk publish | Requires Functional Clarification |
+Poin-poin berikut merupakan **Workflow Decisions** yang ditetapkan oleh arsitek. Hanya Publish Approval yang berpotensi bergantung pada keputusan bisnis; empat poin lainnya adalah keputusan teknis/workflow.
+
+## 30.1 Publish Approval
+
+### Keputusan
+
+BRD saat ini **tidak mendefinisikan approval workflow**. Oleh karena itu implementasi Product Catalog **v1 menggunakan direct publish** — Publish dilakukan langsung oleh pengguna yang memiliki hak akses (Product Administrator atau Business User sesuai RBAC).
+
+```text
+Draft
+   │
+   ▼
+Ready
+   │
+Publish
+   │
+   ▼
+Published
+```
+
+### Rationale
+
+- BRD tidak mendefinisikan proses maker-checker.
+- Product Catalog hanya mengelola metadata produk.
+- Approval merupakan business workflow yang seharusnya berada di Workflow Engine atau Business Process Service apabila dibutuhkan di masa depan.
+
+### Future Extension
+
+Apabila di masa depan organisasi membutuhkan maker-checker, workflow akan diimplementasikan sebagai **business process di Workflow Engine, bukan di dalam Product Aggregate**:
+
+```text
+Draft
+
+↓
+
+Ready
+
+↓
+
+Pending Approval
+
+↓
+
+Approved
+
+↓
+
+Published
+```
+
+Tanpa mengubah Aggregate Product.
+
+**Status:** ✅ Resolved
 
 ---
 
-# 31. Next Document
+## 30.2 Unarchive
+
+### Keputusan
+
+Archive bersifat final.
+
+Tidak tersedia workflow Unarchive.
+
+Untuk mengaktifkan kembali produk, pengguna harus membuat Draft baru dari Product yang bersangkutan dan melakukan Publish sehingga menghasilkan Product Version baru.
+
+```text
+Published
+
+↓
+
+Archived
+
+↓
+
+(No Transition)
+```
+
+### Rationale
+
+- Menjaga lifecycle tetap sederhana.
+- Menghindari kebingungan terhadap versi aktif.
+- Konsisten dengan prinsip immutable version.
+
+**Status:** ✅ Resolved
+
+---
+
+## 30.3 Locking Strategy
+
+### Keputusan
+
+Product Catalog hanya menggunakan **Optimistic Locking**.
+
+Tidak menggunakan:
+
+- Pessimistic Lock
+- Distributed Lock
+- Database Advisory Lock
+
+Concurrency dikendalikan menggunakan kolom:
+
+```text
+version
+```
+
+Jika terjadi konflik update:
+
+```http
+409 Conflict
+```
+
+dengan error:
+
+```json
+{
+  "code": "OPTIMISTIC_LOCK_CONFLICT",
+  "message": "Product has been modified by another user."
+}
+```
+
+### Rationale
+
+- Beban write relatif rendah.
+- Mendukung horizontal scalability.
+- Menghindari lock database yang panjang.
+
+**Status:** ✅ Resolved
+
+---
+
+## 30.4 Workflow SLA
+
+### Keputusan
+
+SLA teknis untuk Product Catalog.
+
+| Workflow | Target |
+|-----------|--------|
+| Create Product | < 500 ms |
+| Update Product | < 500 ms |
+| Publish Product | < 2 detik |
+| Archive Product | < 500 ms |
+| Search Product | < 300 ms |
+| Get Product Detail | < 300 ms |
+| Get Version History | < 500 ms |
+
+Target berlaku pada kondisi normal dan tidak termasuk latency jaringan eksternal.
+
+### Rationale
+
+- Mendukung pengalaman pengguna Back Office.
+- Menjadi acuan Performance Test dan SRE.
+
+**Status:** ✅ Resolved
+
+---
+
+## 30.5 Bulk Publish
+
+### Keputusan
+
+Bulk Publish **tidak didukung** pada versi pertama Product Catalog.
+
+Publish dilakukan per Product.
+
+```text
+POST /products/{id}/publish
+```
+
+Tidak tersedia:
+
+```text
+POST /products/publish
+```
+
+atau
+
+```text
+POST /products/bulk-publish
+```
+
+### Rationale
+
+- Mengurangi kompleksitas transaksi.
+- Menghindari partial success.
+- Mempermudah audit.
+- Mempermudah rollback operasional.
+
+Apabila kebutuhan bulk muncul di masa depan, implementasi direkomendasikan menggunakan asynchronous job.
+
+**Status:** ✅ Resolved
+
+---
+
+# 31. Workflow Governance Summary
+
+| Area | Decision |
+|------|----------|
+| Publish Approval | Tidak ada approval workflow di v1 (direct publish) |
+| Publish Trigger | Manual oleh user yang memiliki hak akses |
+| Future Approval | Business process di Workflow Engine, bukan di Product Aggregate |
+| Unarchive | Tidak didukung |
+| Locking | Optimistic Locking |
+| Pessimistic Lock | Tidak digunakan |
+| Distributed Lock | Tidak digunakan |
+| Workflow SLA | Ditetapkan per operasi |
+| Bulk Publish | Tidak didukung pada versi pertama |
+
+---
+
+# 32. Next Document
 
 **TSD_07_VERSIONING.md**
 

@@ -335,40 +335,22 @@ Tidak boleh mengembalikan stacktrace.
 
 ```mermaid
 flowchart TD
+    Request[HTTP Request]
+    Validation[Validation Layer]
+    BusinessRule[Business Rule]
+    Repository[Repository]
+    Exception[Exception]
+    Handler[GlobalExceptionHandler]
 
-Request
-
-↓
-
-Validation
-
-↓
-
-Business Rule
-
-↓
-
-Repository
-
-↓
-
-Response
-
-Request --> Validation
-
-Validation --> BusinessRule
-
-BusinessRule --> Repository
-
-Repository --> Response
-
-Validation --> Exception
-
-BusinessRule --> Exception
-
-Repository --> Exception
-
-Exception --> GlobalExceptionHandler
+    Request -->|Validate Request| Validation
+    Validation -->|Validate Business| BusinessRule
+    BusinessRule -->|Persist| Repository
+    Repository -->|Result| Response[HTTP Response]
+    Validation -->|Error| Exception
+    BusinessRule -->|Error| Exception
+    Repository -->|Error| Exception
+    Exception -->|Handle & Map| Handler
+    Handler -->|RFC 7807 Problem Details| Response
 ```
 
 ---
@@ -588,30 +570,18 @@ public record ApiErrorResponse(
 
 ```mermaid
 sequenceDiagram
-
-actor Client
-
-participant Controller
-
-participant Service
-
-participant Repository
-
-participant ExceptionHandler
-
-Client->>Controller
-
-Controller->>Service
-
-Service->>Repository
-
-Repository-->>Service: Exception
-
-Service-->>Controller
-
-Controller->>ExceptionHandler
-
-ExceptionHandler-->>Client
+    actor Client
+    participant Controller
+    participant Service
+    participant Repository
+    participant ExceptionHandler
+    Client->>Controller: HTTP Request
+    Controller->>Service: Invoke Use Case
+    Service->>Repository: Persist / Query
+    Repository-->>Service: Exception
+    Service-->>Controller: Propagate Exception
+    Controller->>ExceptionHandler: Delegate
+    ExceptionHandler-->>Client: RFC 7807 Problem Details
 ```
 
 ---
@@ -670,19 +640,320 @@ Direkomendasikan mengikuti **RFC 7807 (Problem Details for HTTP APIs)** sebagai 
 
 ---
 
-# 40. Requires Functional Clarification
+# 40. Error Handling Governance
 
-| Item | Status |
-| ------ | -------- |
-| Standard Error Code Organization | Requires Functional Clarification |
-| Localization (Bahasa Indonesia / English) | Requires Functional Clarification |
-| Error Message Customization per Consumer | Requires Functional Clarification |
-| Rate Limiting Error Response | Requires Functional Clarification |
-| Retry-After Header Policy | Requires Functional Clarification |
+Poin-poin berikut merupakan **API Error Governance / Enterprise API Standard** yang ditetapkan oleh arsitek, bukan Functional Requirements.
+
+## 40.1 Standard Error Code Organization
+
+### Keputusan
+
+Product Catalog menggunakan struktur Error Code yang terstandarisasi.
+
+Format:
+
+```
+<DOMAIN>_<CATEGORY>_<ERROR>
+```
+
+Contoh:
+
+```
+PRODUCT_NOT_FOUND
+
+PRODUCT_ALREADY_EXISTS
+
+PRODUCT_ALREADY_PUBLISHED
+
+PRODUCT_INVALID_STATE
+
+COMPANY_NOT_FOUND
+
+COMPANY_ALREADY_EXISTS
+
+VALIDATION_REQUIRED_FIELD
+
+VALIDATION_INVALID_FORMAT
+
+SECURITY_ACCESS_DENIED
+
+SYSTEM_INTERNAL_ERROR
+```
+
+Kategori:
+
+| Category | Prefix |
+|----------|--------|
+| Validation | VALIDATION_* |
+| Business | PRODUCT_* / COMPANY_* |
+| Security | SECURITY_* |
+| Infrastructure | SYSTEM_* |
+| Integration | INTEGRATION_* |
+
+### Rationale
+
+- Error code stabil.
+- Tidak bergantung pada bahasa.
+- Mudah dipetakan oleh Frontend.
+- Mendukung monitoring.
+
+**Status:** ✅ Resolved
 
 ---
 
-# 41. Traceability
+## 40.2 Localization
+
+### Keputusan
+
+Error Code bersifat tetap.
+
+Error Message menggunakan Bahasa Inggris sebagai default.
+
+Contoh:
+
+```json
+{
+  "code": "PRODUCT_NOT_FOUND",
+  "message": "Product not found."
+}
+```
+
+Apabila diperlukan di masa depan, localization dilakukan melalui:
+
+```
+Accept-Language
+```
+
+misalnya:
+
+```
+Accept-Language: id-ID
+```
+
+atau
+
+```
+Accept-Language: en-US
+```
+
+Namun Product Catalog versi pertama tidak menyediakan translasi multi-bahasa.
+
+### Rationale
+
+- Error code menjadi kontrak utama.
+- Menghindari kompleksitas i18n.
+- Frontend dapat melakukan translasi sendiri apabila diperlukan.
+
+**Status:** ✅ Resolved
+
+---
+
+## 40.3 Error Message Customization
+
+### Keputusan
+
+Tidak ada customization berdasarkan consumer.
+
+Semua consumer menerima:
+
+- Error Code yang sama
+- HTTP Status yang sama
+- Error Response yang sama
+
+Contoh:
+
+Marketplace
+
+↓
+
+```
+PRODUCT_NOT_FOUND
+```
+
+Quote Service
+
+↓
+
+```
+PRODUCT_NOT_FOUND
+```
+
+Proposal Service
+
+↓
+
+```
+PRODUCT_NOT_FOUND
+```
+
+### Rationale
+
+- Konsistensi API.
+- Mengurangi kompleksitas maintenance.
+- Mempermudah dokumentasi OpenAPI.
+
+**Status:** ✅ Resolved
+
+---
+
+## 40.4 Rate Limiting Error Response
+
+### Keputusan
+
+Apabila request dibatasi oleh API Gateway, response menggunakan:
+
+```
+HTTP 429 Too Many Requests
+```
+
+Response Body
+
+```json
+{
+  "timestamp": "2026-08-04T12:00:00Z",
+  "success": false,
+  "error": {
+    "code": "RATE_LIMIT_EXCEEDED",
+    "message": "API rate limit exceeded."
+  }
+}
+```
+
+### Rationale
+
+Mengikuti RFC 6585 dan praktik REST API enterprise.
+
+**Status:** ✅ Resolved
+
+---
+
+## 40.5 Retry-After Header
+
+### Keputusan
+
+Header berikut dikembalikan hanya untuk response yang mendukung retry.
+
+Contoh:
+
+```
+HTTP/1.1 429 Too Many Requests
+
+Retry-After: 60
+```
+
+atau
+
+```
+HTTP/1.1 503 Service Unavailable
+
+Retry-After: 30
+```
+
+Header tidak dikirim untuk:
+
+- 400
+- 401
+- 403
+- 404
+- 409
+- 422
+
+### Rationale
+
+Retry hanya relevan untuk kondisi sementara.
+
+**Status:** ✅ Resolved
+
+---
+
+## 40.6 Error Code Immutability
+
+### Keputusan
+
+Error Code bersifat **immutable** setelah dipublikasikan.
+
+- `PRODUCT_NOT_FOUND` akan selalu berarti kondisi yang sama.
+- Jangan pernah mengubah arti sebuah error code setelah dipublikasikan.
+- Jika diperlukan perilaku baru, buat error code baru.
+
+Dengan begitu frontend dan consumer tidak mengalami breaking change.
+
+**Status:** ✅ Resolved
+
+---
+
+## 40.7 Internal Error Masking
+
+### Keputusan
+
+Untuk seluruh error **500 Internal Server Error**, jangan pernah mengembalikan detail exception Java.
+
+Contoh yang **tidak boleh**:
+
+```text
+org.postgresql.util.PSQLException:
+duplicate key value violates unique constraint...
+```
+
+Yang benar:
+
+```json
+{
+  "code": "SYSTEM_INTERNAL_ERROR",
+  "message": "An unexpected error occurred."
+}
+```
+
+Detail teknis tetap dicatat di log menggunakan `traceId` dan `correlationId`, tetapi tidak diekspos ke consumer.
+
+### Rationale
+
+- Mencegah kebocoran informasi internal.
+- Mencegah eksploitasi celah keamanan.
+- Detail teknis tersedia bagi engineer melalui log untuk root cause analysis.
+
+**Status:** ✅ Resolved
+
+---
+
+# 41. Error Response Standard
+
+Semua endpoint menggunakan struktur error berikut.
+
+```json
+{
+  "timestamp": "2026-08-04T12:00:00Z",
+  "success": false,
+  "error": {
+    "code": "PRODUCT_NOT_FOUND",
+    "message": "Product not found."
+  },
+  "traceId": "4d3f0b2c...",
+  "correlationId": "REQ-20260804-001"
+}
+```
+
+---
+
+# 42. Error Handling Summary
+
+| Area | Decision |
+|------|----------|
+| Error Code | Stable dan vendor-independent |
+| Error Message | Default Bahasa Inggris |
+| Localization | Tidak pada versi pertama |
+| Consumer Customization | Tidak didukung |
+| Rate Limiting | HTTP 429 |
+| Retry-After | Hanya untuk 429 dan 503 |
+| Trace ID | Wajib |
+| Correlation ID | Wajib |
+| Error Format | Konsisten untuk seluruh endpoint |
+| Error Code Immutability | Tidak boleh diubah setelah dipublikasikan |
+| Internal Error Masking | Detail teknis tidak diekspos ke consumer |
+
+---
+
+# 43. Traceability
 
 | BRD | FSD | Component | API | Test Case |
 | ----- | ----- | ----------- | ----- | ----------- |
@@ -694,7 +965,7 @@ Direkomendasikan mengikuti **RFC 7807 (Problem Details for HTTP APIs)** sebagai 
 
 ---
 
-# 42. Next Document
+# 44. Next Document
 
 **TSD_11_LOGGING.md**
 

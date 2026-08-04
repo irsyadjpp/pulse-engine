@@ -546,20 +546,199 @@ Service harus tersedia untuk seluruh consumer.
 
 ---
 
-# 28. Requires Functional Clarification
+# 28. Non-Functional Requirement Governance
 
-| Item | Status |
-|------|--------|
-| SLA Resmi Perusahaan | Requires Functional Clarification |
-| SLO Resmi | Requires Functional Clarification |
-| RTO | Requires Functional Clarification |
-| RPO | Requires Functional Clarification |
-| Peak Concurrent User | Requires Functional Clarification |
-| Compliance Standard (ISO 27001, PCI DSS, OJK, dll.) | Requires Functional Clarification |
+Tujuan NFR Mapping bukan untuk menentukan nilai SLA, RTO, atau compliance, tetapi untuk **memetakan bagaimana aplikasi memenuhi NFR yang telah ditentukan**. Yang perlu dibedakan:
+
+- **NFR Requirement** → berasal dari BRD atau kebijakan organisasi.
+- **Technical Solution** → dijelaskan di TSD.
+- **Nilai target (SLA, RTO, dll.)** → boleh berasal dari organisasi dan tidak perlu di-hardcode oleh Product Catalog.
+
+## 28.1 Service Level Agreement (SLA)
+
+### Keputusan
+
+Product Catalog mendukung pencapaian SLA organisasi melalui:
+
+- Stateless Architecture
+- Horizontal Scalability
+- Health Check
+- Monitoring
+- Graceful Shutdown
+- Retry Strategy
+- Caching
+
+Target SLA resmi ditentukan oleh organisasi dan tidak menjadi bagian dari implementasi aplikasi.
+
+### Rationale
+
+SLA merupakan komitmen layanan organisasi, sedangkan aplikasi menyediakan kemampuan teknis untuk mencapainya.
+
+**Status:** ✅ Resolved
 
 ---
 
-# 29. Complete NFR Traceability Matrix
+## 28.2 Service Level Objective (SLO)
+
+### Keputusan
+
+Product Catalog menyediakan seluruh telemetry yang diperlukan untuk pengukuran SLO.
+
+Metrik yang tersedia:
+
+- Availability
+- Response Time
+- Error Rate
+- Throughput
+- JVM Metrics
+- Database Metrics
+- Redis Metrics
+
+Nilai target SLO mengikuti kebijakan SRE organisasi.
+
+### Rationale
+
+SLO merupakan target operasional, bukan logika aplikasi.
+
+**Status:** ✅ Resolved
+
+---
+
+## 28.3 Recovery Time Objective (RTO)
+
+### Keputusan
+
+Product Catalog mendukung proses pemulihan melalui:
+
+- Stateless Service
+- Immutable Container Image
+- Externalized Configuration
+- Automated Deployment
+- Database Backup
+- Health Probe
+
+Nilai RTO ditentukan oleh organisasi.
+
+### Rationale
+
+RTO merupakan bagian dari Business Continuity Plan.
+
+**Status:** ✅ Resolved
+
+---
+
+## 28.4 Recovery Point Objective (RPO)
+
+### Keputusan
+
+Product Catalog mendukung pencapaian RPO melalui:
+
+- PostgreSQL Backup
+- WAL Archive (jika digunakan)
+- Point-in-Time Recovery (PITR)
+- Disaster Recovery Procedure
+
+Target RPO mengikuti kebijakan organisasi.
+
+### Rationale
+
+RPO merupakan kebijakan operasional database dan disaster recovery.
+
+**Status:** ✅ Resolved
+
+---
+
+## 28.5 Capacity Planning
+
+### Keputusan
+
+Product Catalog tidak menetapkan target Peak Concurrent User.
+
+Aplikasi dirancang agar dapat diskalakan secara horizontal tanpa perubahan kode.
+
+Strategi yang digunakan:
+
+- Stateless Service
+- Connection Pool
+- Redis Cache
+- Database Indexing
+- Pagination
+- Horizontal Pod Autoscaler
+
+### Rationale
+
+Jumlah concurrent user merupakan hasil Capacity Planning organisasi.
+
+**Status:** ✅ Resolved
+
+---
+
+## 28.6 Compliance
+
+### Keputusan
+
+Product Catalog dirancang agar dapat memenuhi persyaratan kepatuhan organisasi.
+
+Capability yang disediakan meliputi:
+
+- Audit Trail
+- RBAC
+- OAuth2
+- JWT
+- Structured Logging
+- Encryption in Transit (TLS)
+- Secret Management
+- Data Masking
+- Soft Delete
+- Versioning
+
+Standar kepatuhan yang berlaku ditentukan oleh organisasi, misalnya:
+
+- **Regulasi OJK** (sesuai yurisdiksi Indonesia)
+- **Undang-Undang Perlindungan Data Pribadi (UU PDP)** jika berlaku
+- **Standar keamanan informasi organisasi** (misalnya ISO/IEC 27001 atau yang setara)
+
+### Rationale
+
+Compliance merupakan kebijakan organisasi, sedangkan aplikasi menyediakan kontrol teknis yang diperlukan.
+
+**Status:** ✅ Resolved
+
+---
+
+# 29. NFR Governance Summary
+
+| Area | Technical Solution |
+|------|--------------------|
+| Availability | Stateless + Horizontal Scaling |
+| Reliability | Health Check + Retry + Monitoring |
+| Performance | Redis + Index + Pagination |
+| Scalability | Kubernetes + HPA |
+| Security | OAuth2 + JWT + RBAC + TLS |
+| Maintainability | Hexagonal Architecture + DDD |
+| Observability | OpenTelemetry + Prometheus + Structured Logging |
+| Recoverability | Backup + Health Check + Immutable Deployment |
+| Compliance | Audit Trail + Security Controls |
+| Capacity | Horizontal Scaling |
+
+---
+
+## 29.1 Organization Policy Ownership
+
+Item berikut merupakan **Organization Policy** — tidak dapat diputuskan oleh Product Catalog, tetapi juga bukan *Requires Functional Clarification*.
+
+| Item                 | Pemilik Keputusan              |
+| -------------------- | ------------------------------ |
+| SLA Resmi            | Business / SRE                 |
+| SLO Resmi            | SRE                            |
+| RTO                  | Business Continuity Team       |
+| RPO                  | DBA / Business Continuity Team |
+| Peak Concurrent User | Capacity Planning              |
+| Compliance Standard  | Risk, Compliance & Security    |
+
+---
+
+# 30. Complete NFR Traceability Matrix
 
 | BRD NFR | Technical Solution | Spring Component | Verification | Monitoring |
 |----------|-------------------|------------------|--------------|------------|
@@ -576,7 +755,7 @@ Service harus tersedia untuk seluruh consumer.
 
 ---
 
-# 30. Traceability
+# 31. Traceability
 
 | BRD | FSD | TSD | Verification | Test Case |
 |-----|-----|-----|--------------|-----------|
@@ -588,7 +767,7 @@ Service harus tersedia untuk seluruh consumer.
 
 ---
 
-# 31. Next Document
+# 32. Next Document
 
 **TSD_19_TRACEABILITY_MATRIX.md**
 

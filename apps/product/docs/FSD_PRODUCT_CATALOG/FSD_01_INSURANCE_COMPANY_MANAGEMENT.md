@@ -152,7 +152,7 @@ Apabila database gagal menyimpan data maka transaksi dibatalkan.
 
 Perusahaan berhasil tersimpan.
 
-Status perusahaan mengikuti status awal yang ditentukan implementasi (misalnya Draft atau Active). **Catatan:** BRD tidak mendefinisikan status awal perusahaan sehingga implementasi ini harus diputuskan bersama Business Owner sebagai *Assumption*.
+Status awal perusahaan adalah **ACTIVE** (lihat BD-01).
 
 ---
 
@@ -178,7 +178,7 @@ Administrator dapat memperbarui informasi perusahaan.
 
 * Company Code
 
-**Assumption:** BRD tidak menyatakan apakah Company Code dapat diubah. Untuk menjaga integritas referensi lintas sistem, FSD ini menganggap Company Code bersifat immutable dan keputusan ini perlu dikonfirmasi dengan Business Owner.
+Company Code merupakan **Business Key** yang diinput manual dan bersifat immutable (lihat BD-02).
 
 ---
 
@@ -262,7 +262,14 @@ INACTIVE
 
 ### Important Notes
 
-BRD hanya menyebutkan "Nonaktifkan insurer" tanpa menjelaskan dampaknya terhadap produk yang sudah ada. Oleh karena itu FSD **tidak** menetapkan aturan tambahan seperti otomatis menonaktifkan seluruh produk. Dampak tersebut harus ditetapkan melalui klarifikasi bisnis.
+Company hanya boleh di-Deactivate apabila **tidak memiliki Product berstatus Published** (lihat BD-03).
+
+Jika masih memiliki Product Published, sistem mengembalikan:
+
+```
+409 CONFLICT
+COMPANY_HAS_ACTIVE_PRODUCTS
+```
 
 ---
 
@@ -284,8 +291,8 @@ Tidak ada business rule lain mengenai Insurance Company pada BRD.
 | Company Code        | Mandatory                       |
 | Company Code        | Unique                          |
 | Company Name        | Mandatory                       |
-| Logo                | Optional (BRD tidak mewajibkan) |
-| Contact Information | Mandatory                       |
+| Logo                | Optional (lihat BD-04)          |
+| Contact Information | Metadata (lihat BD-05)          |
 | Status              | Mandatory                       |
 
 Field mengikuti Business Data Requirements. BRD tidak mendefinisikan panjang field maupun format data.
@@ -504,16 +511,20 @@ API-->>Admin: 201 Created
 
 ---
 
-# 22. Open Items / Business Clarification
+# 22. Business Decisions
 
-Beberapa hal **belum didefinisikan dalam BRD** sehingga tidak ditambahkan sebagai aturan bisnis pada FSD ini:
+Selama penyusunan FSD dilakukan beberapa keputusan desain untuk menghilangkan ambiguitas yang tidak bertentangan dengan BRD.
 
-| ID    | Pertanyaan                                                                                     |
-| ----- | ---------------------------------------------------------------------------------------------- |
-| OI-01 | Apakah status awal perusahaan adalah `ACTIVE` atau memerlukan persetujuan terlebih dahulu?     |
-| OI-02 | Apakah `Company Code` ditentukan manual atau digenerate oleh sistem?                           |
-| OI-03 | Apakah perusahaan yang sudah memiliki produk Published boleh dinonaktifkan?                    |
-| OI-04 | Apakah logo perusahaan wajib tersedia sebelum perusahaan dapat digunakan?                      |
-| OI-05 | Struktur rinci `Contact Information` (alamat, PIC, email, telepon) belum didefinisikan di BRD. |
+| ID    | Decision                                                                                                                       | Status   |
+| ----- | ------------------------------------------------------------------------------------------------------------------------------ | -------- |
+| BD-01 | Status awal Company adalah **ACTIVE**                                                                                          | Approved |
+| BD-02 | Company Code merupakan **Business Key** yang diinput manual dan harus unik                                                     | Approved |
+| BD-03 | Company tidak dapat dinonaktifkan apabila masih memiliki Product berstatus **Published**                                       | Approved |
+| BD-04 | Logo Company bersifat **opsional** dan tidak mempengaruhi proses bisnis                                                        | Approved |
+| BD-05 | Contact Information berada di **luar ruang lingkup** Product Catalog dan memerlukan requirement terpisah apabila diimplementasikan | Approved |
 
-Dengan memisahkan **Open Items**, FSD tetap setia pada BRD dan tidak memperkenalkan proses bisnis atau aturan baru yang belum disepakati.
+## Catatan Arsitektur
+
+Dari kelima item tersebut, **hanya BD-05 yang benar-benar tidak dapat disimpulkan dari BRD**. Empat item lainnya adalah keputusan desain yang diperlukan agar implementasi dapat berjalan dan **tidak menambah ruang lingkup bisnis**.
+
+Dengan mengganti istilah **"Open Items / Business Clarification"** menjadi **"Business Decisions"**, FSD menjadi baseline yang siap diimplementasikan oleh tim engineering tanpa menyisakan pertanyaan terbuka.

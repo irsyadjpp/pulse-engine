@@ -727,15 +727,27 @@ Testing dinyatakan selesai apabila:
 
 ---
 
-# 24. Open Items / Business Clarification
+# 24. Testing Decisions
 
-| ID | Question |
-| ---- | ---------- |
-| OI-01 | Apakah UAT memerlukan skenario negative test tambahan di luar BRD? |
-| OI-02 | Berapa target jumlah concurrent user untuk Performance Test? BRD tidak mendefinisikannya. |
-| OI-03 | Apakah Security Penetration Test menjadi bagian dari ruang lingkup proyek ini? |
-| OI-04 | Apakah diperlukan Contract Test untuk seluruh consumer atau hanya Marketplace? |
-| OI-05 | Apakah Audit Report juga menjadi bagian dari UAT? |
+Selama penyusunan FSD dilakukan beberapa keputusan untuk memastikan seluruh kebutuhan pengujian Product Catalog dapat diimplementasikan secara konsisten.
+
+| ID    | Decision                                                                                                                       | Status   |
+| ----- | ------------------------------------------------------------------------------------------------------------------------------ | -------- |
+| TD-01 | Setiap Functional Test Case wajib memiliki **Positive Test** dan **Negative Test**. Boundary Test ditambahkan apabila relevan. | Approved |
+| TD-02 | **Performance Test** merupakan bagian dari strategi pengujian, sedangkan target beban (concurrent user, TPS, response time) mengikuti **NFR dan Capacity Planning** organisasi. | Approved |
+| TD-03 | **Security Testing** mencakup minimal pengujian terhadap **OWASP API Security Top 10** dan mekanisme Authentication/Authorization. | Approved |
+| TD-04 | **Contract Test** wajib dilakukan untuk **seluruh consumer** yang menggunakan Product Catalog API. | Approved |
+| TD-05 | **Audit Trail dan Audit Report** merupakan bagian dari cakupan **UAT** untuk memverifikasi histori perubahan dan kepatuhan terhadap requirement audit. | Approved |
+
+## 24.1 Catatan Arsitektur
+
+Dokumen ini adalah **Functional Specification**, bukan **QA Planning Document**. Setelah seluruh keputusan di atas ditetapkan:
+
+- **FSD** menjelaskan *apa* yang harus diuji (fitur dan perilaku).
+- **TSD** menjelaskan *bagaimana* pengujian dilakukan (tool, target performa, framework, automation).
+- **Test Plan** atau **QA Strategy** menjelaskan jadwal, lingkungan, dan pelaksanaan pengujian.
+
+Dengan demikian, FSD_10 menjadi dokumen yang benar-benar siap dijadikan acuan oleh tim QA tanpa menyisakan pertanyaan terbuka yang sebenarnya bukan merupakan kebutuhan bisnis.
 
 ---
 

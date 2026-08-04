@@ -85,24 +85,16 @@ Komponen tersebut berada di luar Product Catalog Service.
 
 ```mermaid
 flowchart LR
+    User[User]
+    Gateway[API Gateway]
+    OAuth[OAuth2 Server]
+    Catalog[Product Catalog]
+    DB[(PostgreSQL)]
 
-User
-
-API Gateway
-
-OAuth2 Server
-
-ProductCatalog
-
-PostgreSQL
-
-User --> API Gateway
-
-API Gateway --> OAuth2 Server
-
-API Gateway --> ProductCatalog
-
-ProductCatalog --> PostgreSQL
+    User -->|HTTPS Request| Gateway
+    Gateway -->|Token Introspection / JWKS| OAuth
+    Gateway -->|Forward JWT| Catalog
+    Catalog -->|JDBC/SSL| DB
 ```
 
 ---
@@ -267,28 +259,25 @@ Walaupun endpoint sama.
 
 ```mermaid
 sequenceDiagram
-
-actor User
-
-participant SecurityFilter
-
-participant Controller
-
-participant Application
-
-User->>SecurityFilter: HTTP Request
-
-SecurityFilter->>SecurityFilter: Validate JWT
-
-SecurityFilter->>SecurityFilter: Validate Role
-
-SecurityFilter->>Controller
-
-Controller->>Application
-
-Application-->>Controller
-
-Controller-->>User
+    actor User
+    participant SecurityFilter
+    participant Controller
+    participant Application
+    User->>SecurityFilter: HTTP Request (Bearer JWT)
+    SecurityFilter->>SecurityFilter: Validate JWT (signature, exp, iss, aud)
+    alt JWT Invalid
+        SecurityFilter-->>User: 401 Unauthorized
+    else JWT Valid
+        SecurityFilter->>SecurityFilter: Validate Role (RBAC)
+        alt Role Denied
+            SecurityFilter-->>User: 403 Forbidden
+        else Role Allowed
+            SecurityFilter->>Controller: Forward Request
+            Controller->>Application: Invoke Use Case
+            Application-->>Controller: Result
+            Controller-->>User: HTTP Response
+        end
+    end
 ```
 
 ---
@@ -405,15 +394,15 @@ TLS 1.2+
 
 ## At Rest
 
-Mengikuti kebijakan database organisasi.
+Encryption at Rest merupakan tanggung jawab platform penyimpanan (lihat Section 39.8).
 
-BRD tidak mendefinisikan kebutuhan enkripsi kolom tertentu.
+Persyaratan minimum:
 
-Status:
+- PostgreSQL menggunakan encrypted storage (disk/volume encryption).
+- Redis menggunakan encrypted storage apabila persistence diaktifkan.
+- Object Storage menggunakan server-side encryption.
 
-```
-Requires Functional Clarification
-```
+Aplikasi tidak melakukan enkripsi manual terhadap seluruh tabel.
 
 ---
 
@@ -513,13 +502,17 @@ Authorization: Bearer ********
 
 # 30. Rate Limiting
 
-BRD tidak mendefinisikan Rate Limiting.
+Rate Limiting diterapkan pada **API Gateway atau API Management Layer** (lihat Section 39.4).
 
-Status
+Product Catalog tidak mengimplementasikan rate limiting di level aplikasi.
 
-```
-Requires Functional Clarification
-```
+Baseline:
+
+| Consumer | Rate Limit |
+|----------|------------|
+| Internal Service | Tidak dibatasi |
+| Back Office UI | 300 request/menit |
+| External Consumer | 100 request/menit |
 
 ---
 
@@ -645,22 +638,264 @@ Meliputi.
 
 ---
 
-# 39. Requires Functional Clarification
+# 39. Security Architecture Decisions
 
-| Item | Status |
-| ------ | -------- |
-| Identity Provider (Keycloak, Auth0, Azure AD, dll.) | Requires Functional Clarification |
-| Token Lifetime | Requires Functional Clarification |
-| Refresh Token Policy | Requires Functional Clarification |
-| API Rate Limiting | Requires Functional Clarification |
-| IP Whitelist | Requires Functional Clarification |
-| Mutual TLS (mTLS) antar service | Requires Functional Clarification |
-| Data Classification Policy | Requires Functional Clarification |
-| Encryption at Rest Requirement | Requires Functional Clarification |
+Poin-poin berikut merupakan **Security Architecture Decisions** yang dapat ditetapkan oleh arsitek. Item yang bergantung pada organisasi/infrastruktur ditetapkan sebagai **Platform / Infrastructure Responsibility** (lihat Section 41).
+
+## 39.1 Identity Provider (IdP)
+
+### Keputusan
+
+Product Catalog tidak bergantung pada Identity Provider tertentu.
+
+Service mendukung standar:
+
+- OAuth2 Authorization Framework (RFC 6749)
+- JWT Bearer Token (RFC 7519)
+- OpenID Connect (OIDC)
+
+Identity Provider yang didukung antara lain:
+
+- Keycloak
+- Microsoft Entra ID (Azure AD)
+- Auth0
+- Okta
+- Ping Identity
+- IAM lain yang kompatibel dengan OAuth2/OIDC
+
+Spring Security dikonfigurasi sebagai OAuth2 Resource Server.
+
+### Rationale
+
+- Menghindari vendor lock-in.
+- Memungkinkan deployment di berbagai lingkungan.
+- Selaras dengan standar OAuth2/OIDC.
+
+**Status:** ✅ Resolved
 
 ---
 
-# 40. Traceability
+## 39.2 Token Lifetime
+
+### Keputusan
+
+Product Catalog tidak menentukan masa berlaku token.
+
+Token lifetime merupakan kebijakan Identity Provider.
+
+Baseline yang direkomendasikan:
+
+| Token | Recommended Lifetime |
+|--------|----------------------|
+| Access Token | 15–30 menit |
+| Refresh Token | 8–24 jam |
+
+Service hanya memvalidasi:
+
+- signature
+- issuer
+- audience
+- expiration (`exp`)
+- not before (`nbf`)
+
+### Rationale
+
+Lifecycle token merupakan tanggung jawab IdP.
+
+**Status:** ✅ Resolved
+
+---
+
+## 39.3 Refresh Token Policy
+
+### Keputusan
+
+Refresh Token tidak pernah dikirim ke Product Catalog.
+
+Refresh Token hanya digunakan antara Client dan Identity Provider.
+
+Flow:
+
+```text
+Client
+
+↓
+
+Identity Provider
+
+↓
+
+Access Token
+
+↓
+
+Product Catalog
+```
+
+Product Catalog hanya menerima Access Token.
+
+### Rationale
+
+Mengurangi risiko kebocoran Refresh Token.
+
+**Status:** ✅ Resolved
+
+---
+
+## 39.4 API Rate Limiting
+
+### Keputusan
+
+Rate Limiting diterapkan pada API Gateway atau API Management Layer.
+
+Product Catalog tidak mengimplementasikan rate limiting di level aplikasi.
+
+### Baseline
+
+| Consumer | Rate Limit |
+|----------|------------|
+| Internal Service | Tidak dibatasi |
+| Back Office UI | 300 request/menit |
+| External Consumer | 100 request/menit |
+
+### Rationale
+
+Menjaga service tetap stateless dan sederhana.
+
+**Status:** ✅ Resolved
+
+---
+
+## 39.5 IP Whitelist
+
+### Keputusan
+
+IP Whitelist bukan tanggung jawab aplikasi.
+
+Jika diperlukan, diterapkan pada:
+
+- API Gateway
+- WAF
+- Load Balancer
+- Kubernetes Ingress
+- Firewall
+
+### Rationale
+
+Kebijakan jaringan berbeda pada setiap organisasi.
+
+**Status:** ✅ Resolved
+
+---
+
+## 39.6 Mutual TLS (mTLS)
+
+### Keputusan
+
+Product Catalog mendukung komunikasi melalui HTTPS.
+
+mTLS bersifat opsional dan ditentukan oleh platform.
+
+Apabila organisasi menerapkan Service Mesh (misalnya Istio atau Linkerd), mTLS dapat diaktifkan tanpa perubahan kode aplikasi.
+
+### Rationale
+
+Menghindari coupling dengan implementasi jaringan tertentu.
+
+**Status:** ✅ Resolved
+
+---
+
+## 39.7 Data Classification Policy
+
+### Keputusan
+
+Data diklasifikasikan sebagai berikut.
+
+| Data | Classification |
+|------|----------------|
+| Product | Internal |
+| Company | Internal |
+| Coverage | Internal |
+| Benefit | Internal |
+| Exclusion | Internal |
+| Premium Configuration | Confidential |
+| Audit History | Confidential |
+| JWT | Confidential |
+| Access Token | Confidential |
+| Password | Tidak disimpan oleh Product Catalog |
+
+Data classified sebagai **Confidential** wajib dimasking pada log dan tidak boleh diekspos tanpa otorisasi.
+
+### Rationale
+
+Mendukung prinsip least privilege dan auditability.
+
+**Status:** ✅ Resolved
+
+---
+
+## 39.8 Encryption at Rest
+
+### Keputusan
+
+Encryption at Rest merupakan tanggung jawab platform penyimpanan.
+
+Persyaratan minimum:
+
+- PostgreSQL menggunakan encrypted storage (disk/volume encryption).
+- Redis menggunakan encrypted storage apabila persistence diaktifkan.
+- Object Storage menggunakan server-side encryption.
+
+Aplikasi tidak melakukan enkripsi manual terhadap seluruh tabel.
+
+Field yang mengandung secret (jika ada) dapat menggunakan application-level encryption.
+
+### Rationale
+
+Menghindari kompleksitas yang tidak diperlukan dan memanfaatkan kemampuan platform.
+
+**Status:** ✅ Resolved
+
+---
+
+# 40. Security Governance Summary
+
+| Area | Decision |
+|------|----------|
+| Authentication | OAuth2 + JWT + OIDC |
+| Identity Provider | Vendor agnostic |
+| Access Token | Mandatory |
+| Refresh Token | Tidak diterima oleh Product Catalog |
+| Token Validation | Signature, Issuer, Audience, Expiration |
+| Rate Limiting | API Gateway |
+| IP Whitelist | Infrastructure Layer |
+| mTLS | Opsional, Platform Managed |
+| Data Classification | Internal & Confidential |
+| Encryption in Transit | HTTPS/TLS 1.2+ |
+| Encryption at Rest | Platform Managed |
+| Secret Management | Kubernetes Secret / Vault |
+| Password Storage | Tidak ada di Product Catalog |
+
+---
+
+# 41. Platform / Infrastructure Responsibility
+
+Item berikut **tidak boleh diputuskan oleh tim aplikasi** karena merupakan keputusan organisasi atau platform. Bukan *Requires Functional Clarification*, melainkan tanggung jawab platform/infrastruktur.
+
+| Item | Keputusan yang Disarankan |
+| ---------------------------------------------------------------- | --------------------------------------------------------- |
+| Identity Provider yang dipakai (Keycloak, Auth0, Azure AD, dll.) | **Platform Decision** (aplikasi bersifat vendor-agnostic) |
+| Token Lifetime aktual                                            | **Identity Provider Configuration**                       |
+| Refresh Token Lifetime                                           | **Identity Provider Configuration**                       |
+| API Rate Limiting aktual                                         | **API Gateway Configuration**                             |
+| IP Whitelist                                                     | **Network Security Policy**                               |
+| mTLS diaktifkan atau tidak                                       | **Infrastructure / Service Mesh Configuration**           |
+| Encryption at Rest                                               | **Storage Platform Policy**                               |
+
+---
+
+# 42. Traceability
 
 | BRD | FSD | Security Control | Endpoint | Test Case |
 | ----- | ----- | ------------------ | ---------- | ----------- |
@@ -672,7 +907,7 @@ Meliputi.
 
 ---
 
-# 41. Next Document
+# 43. Next Document
 
 **TSD_10_ERROR_HANDLING.md**
 

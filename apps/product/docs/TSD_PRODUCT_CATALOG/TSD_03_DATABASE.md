@@ -549,27 +549,64 @@ Target:
 
 # 22. Backup Strategy
 
-Requires Functional Clarification
+Backup merupakan tanggung jawab Platform/DBA, bukan Product Catalog.
 
-BRD tidak mendefinisikan:
+Baseline:
 
-- Backup Frequency
-- RPO
-- RTO
-- Replication
-- Disaster Recovery
+| Backup             | Frequency  |
+| ------------------ | ---------- |
+| Full Backup        | Weekly     |
+| Incremental Backup | Daily      |
+| WAL Archive        | Continuous |
+
+Recovery Target:
+
+| Metric | Target       |
+| ------ | ------------ |
+| RPO    | ≤ 15 Minutes |
+| RTO    | ≤ 1 Hour     |
+
+Implementasi aktual mengikuti standar infrastruktur organisasi.
 
 ---
 
 # 23. Partition Strategy
 
-Saat ini tidak diperlukan.
+Partition **bukan requirement awal**, tetapi merupakan optimisasi ketika volume audit tinggi.
 
-Alasan:
+Baseline:
 
-BRD tidak menunjukkan volume data yang memerlukan partitioning.
+```text
+audit_history
+```
 
-Apabila Audit History tumbuh sangat besar, partitioning berdasarkan `performed_at` dapat dipertimbangkan.
+tanpa partition.
+
+Threshold:
+
+Apabila:
+
+- > 10 juta record, atau
+- pertumbuhan > 1 juta record/bulan, atau
+- query audit mulai terdegradasi,
+
+maka dapat diterapkan:
+
+```sql
+PARTITION BY RANGE(created_at)
+```
+
+contoh:
+
+```
+audit_history_2026_01
+
+audit_history_2026_02
+
+audit_history_2026_03
+```
+
+Implementasi partition tidak memengaruhi domain maupun API.
 
 ---
 
@@ -635,16 +672,210 @@ Apabila Audit History tumbuh sangat besar, partitioning berdasarkan `performed_a
 
 ---
 
-# 29. Requires Functional Clarification
+# 29. Technical Architecture Decisions
 
-| Item | Status |
-| ------ | -------- |
-| Maksimum ukuran Product Document metadata | Requires Functional Clarification |
-| Retention Audit History | Requires Functional Clarification |
-| Backup Policy | Requires Functional Clarification |
-| Database High Availability Topology | Requires Functional Clarification |
-| Archive Strategy untuk Product Version lama | Requires Functional Clarification |
-| Kebutuhan table partition untuk Audit History | Requires Functional Clarification |
+Poin-poin berikut merupakan **keputusan teknis (Technical Architecture Decisions)**, bukan Functional Requirements. Seluruhnya telah diputuskan di level arsitektur dan tidak lagi berstatus *Requires Functional Clarification*.
+
+## 29.1 Maksimum Ukuran Product Document Metadata
+
+Product Catalog hanya menyimpan **metadata** dokumen. File fisik disimpan di Object Storage.
+
+| Attribute     | Type    | Max Length |
+| ------------- | ------- | ---------- |
+| document_name | VARCHAR | 255        |
+| document_type | VARCHAR | 50         |
+| mime_type     | VARCHAR | 100        |
+| storage_key   | VARCHAR | 1024       |
+| checksum      | VARCHAR | 128        |
+| file_size     | BIGINT  | 8 Bytes    |
+| description   | VARCHAR | 1000       |
+
+Rationale:
+
+- Mendukung path S3/MinIO yang panjang.
+- Tidak menyimpan binary di PostgreSQL.
+- Tidak ada kebutuhan perubahan BRD.
+
+**Status:** ✅ Resolved
+
+---
+
+## 29.2 Retention Audit History
+
+Audit bersifat **append-only** dan tidak dapat diubah maupun dihapus oleh aplikasi.
+
+Retention mengikuti kebijakan perusahaan, dengan baseline teknis:
+
+- **Minimum 7 tahun**
+- atau sesuai regulasi OJK / perusahaan
+
+```text
+Application
+    ↓
+Audit Table
+
+Append Only
+
+No Update
+
+No Delete
+```
+
+Archive dilakukan oleh DBA atau platform, bukan aplikasi.
+
+**Status:** ✅ Resolved
+
+---
+
+## 29.3 Backup Policy
+
+Backup merupakan tanggung jawab Platform/DBA, bukan Product Catalog.
+
+| Backup             | Frequency  |
+| ------------------ | ---------- |
+| Full Backup        | Weekly     |
+| Incremental Backup | Daily      |
+| WAL Archive        | Continuous |
+
+Recovery Target:
+
+| Metric | Target       |
+| ------ | ------------ |
+| RPO    | ≤ 15 Minutes |
+| RTO    | ≤ 1 Hour     |
+
+Implementasi aktual mengikuti standar infrastruktur organisasi.
+
+**Status:** ✅ Resolved
+
+---
+
+## 29.4 Database High Availability
+
+Tidak ditentukan oleh aplikasi. Aplikasi hanya mensyaratkan PostgreSQL HA.
+
+Baseline:
+
+```text
+Primary
+
+↓
+
+Streaming Replication
+
+↓
+
+Standby
+```
+
+atau
+
+```text
+Patroni
+
++
+
+PgBouncer
+```
+
+atau layanan managed cloud yang ekuivalen.
+
+Service tetap menggunakan satu JDBC URL.
+
+**Status:** ✅ Resolved
+
+---
+
+## 29.5 Archive Strategy Product Version
+
+Product Version **tidak pernah dihapus**.
+
+Karena:
+
+- Quote membutuhkan historical version.
+- Proposal membutuhkan historical version.
+- Reporting membutuhkan historical version.
+- Audit membutuhkan historical version.
+
+Flow:
+
+```text
+Draft
+
+↓
+
+Publish
+
+↓
+
+Product Version
+
+↓
+
+Readonly Forever
+```
+
+Jika volume sangat besar:
+
+- Archive dilakukan ke cold storage/database archive oleh DBA.
+- Tidak dilakukan oleh aplikasi.
+
+**Status:** ✅ Resolved
+
+---
+
+## 29.6 Partition Audit History
+
+Partition **bukan requirement awal**, tetapi merupakan optimisasi ketika volume audit tinggi.
+
+Baseline:
+
+```text
+audit_history
+```
+
+tanpa partition.
+
+Threshold:
+
+Apabila:
+
+- > 10 juta record, atau
+- pertumbuhan > 1 juta record/bulan, atau
+- query audit mulai terdegradasi,
+
+maka dapat diterapkan:
+
+```sql
+PARTITION BY RANGE(created_at)
+```
+
+contoh:
+
+```
+audit_history_2026_01
+
+audit_history_2026_02
+
+audit_history_2026_03
+```
+
+Implementasi partition tidak memengaruhi domain maupun API.
+
+**Status:** ✅ Resolved
+
+---
+
+## Ringkasan Section 29
+
+| Item                                      | Decision                                                                             | Status     |
+| ----------------------------------------- | ------------------------------------------------------------------------------------ | ---------- |
+| Maksimum ukuran Product Document metadata | Metadata only, ukuran kolom ditentukan secara teknis                                 | ✅ Resolved |
+| Retention Audit History                   | Append-only, minimal 7 tahun atau sesuai regulasi perusahaan                         | ✅ Resolved |
+| Backup Policy                             | Full + Incremental + WAL, mengikuti standar platform                                 | ✅ Resolved |
+| Database High Availability Topology       | PostgreSQL HA (Primary–Standby atau managed service), transparan bagi aplikasi       | ✅ Resolved |
+| Archive Strategy Product Version          | Tidak dihapus oleh aplikasi, archive menjadi tanggung jawab platform bila diperlukan | ✅ Resolved |
+| Table Partition Audit History             | Tidak diwajibkan pada fase awal; diterapkan berdasarkan volume data dan performa     | ✅ Resolved |
 
 ---
 

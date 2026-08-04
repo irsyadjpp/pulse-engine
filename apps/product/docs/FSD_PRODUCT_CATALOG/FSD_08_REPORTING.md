@@ -392,26 +392,16 @@ Filtering yang direkomendasikan.
 
 ```mermaid
 sequenceDiagram
-
-actor Reporting
-
-participant Report API
-
-participant Repository
-
-database PostgreSQL
-
-Reporting->>Report API: GET Product Report
-
-Report API->>Repository: Query Product
-
-Repository->>PostgreSQL: SELECT
-
-PostgreSQL-->>Repository: Result
-
-Repository-->>Report API: Product Report
-
-Report API-->>Reporting: JSON
+    actor Reporting
+    participant ReportAPI[Report API]
+    participant Repository
+    participant DB[(PostgreSQL)]
+    Reporting->>ReportAPI: GET Product Report
+    ReportAPI->>Repository: Query Product
+    Repository->>DB: SELECT
+    DB-->>Repository: Result
+    Repository-->>ReportAPI: Product Report
+    ReportAPI-->>Reporting: JSON
 ```
 
 ---
@@ -420,26 +410,16 @@ Report API-->>Reporting: JSON
 
 ```mermaid
 sequenceDiagram
-
-actor Auditor
-
-participant Report API
-
-participant Audit Repository
-
-database PostgreSQL
-
-Auditor->>Report API: GET Audit Report
-
-Report API->>Audit Repository: Query Audit
-
-Audit Repository->>PostgreSQL: SELECT
-
-PostgreSQL-->>Audit Repository: Result
-
-Audit Repository-->>Report API: Audit Report
-
-Report API-->>Auditor: JSON
+    actor Auditor
+    participant ReportAPI[Report API]
+    participant AuditRepository[Audit Repository]
+    participant DB[(PostgreSQL)]
+    Auditor->>ReportAPI: GET Audit Report
+    ReportAPI->>AuditRepository: Query Audit
+    AuditRepository->>DB: SELECT
+    DB-->>AuditRepository: Result
+    AuditRepository-->>ReportAPI: Audit Report
+    ReportAPI-->>Auditor: JSON
 ```
 
 ---
@@ -541,15 +521,41 @@ Authorization
 
 ---
 
-# 24. Open Items / Business Clarification
+# 24. Reporting Decisions
 
-| ID | Question |
-| ---- | ---------- |
-| OI-01 | Apakah Reporting membutuhkan export ke CSV, Excel, atau PDF? BRD tidak mendefinisikannya. |
-| OI-02 | Apakah terdapat batas maksimum periode data yang dapat diminta dalam Audit Report? |
-| OI-03 | Apakah Reporting membutuhkan endpoint agregasi (misalnya jumlah Product per Company) atau agregasi dilakukan oleh Reporting Service? |
-| OI-04 | Apakah Product Catalog perlu menyediakan scheduled report atau hanya API untuk diakses Reporting Service? |
-| OI-05 | Apakah histori Product yang telah di-Archive tetap ditampilkan pada seluruh laporan atau hanya laporan tertentu? |
+Selama penyusunan FSD dilakukan beberapa keputusan desain untuk memastikan Product Catalog tetap berperan sebagai System of Record dan tidak mengambil tanggung jawab Reporting Service.
+
+Prinsip utama:
+
+> **Product Catalog adalah System of Record (Source of Truth), bukan Reporting Engine.**
+
+Artinya Product Catalog menyediakan **data**, sedangkan proses **agregasi, dashboard, export, dan scheduled report** menjadi tanggung jawab Reporting Service.
+
+| ID    | Decision                                                                                                                       | Status   |
+| ----- | ------------------------------------------------------------------------------------------------------------------------------ | -------- |
+| RD-01 | Product Catalog hanya menyediakan REST API, sedangkan proses **export (CSV, Excel, PDF)** dilakukan oleh Reporting Service      | Approved |
+| RD-02 | Product Catalog tidak menetapkan batas maksimum periode pelaporan; pembatasan dilakukan melalui pagination, page size, timeout, atau kebijakan consumer | Approved |
+| RD-03 | Seluruh **agregasi** data (misalnya jumlah Product per Company) merupakan tanggung jawab Reporting Service                      | Approved |
+| RD-04 | Product Catalog tidak menyediakan **Scheduled Report**; Reporting Service bertanggung jawab atas penjadwalan, pembuatan, dan distribusi laporan | Approved |
+| RD-05 | Product **Archived** tetap tersedia untuk kebutuhan audit dan histori, sedangkan Operational Report dapat memfilter status sesuai kebutuhan consumer | Approved |
+
+## 24.1 Reporting Principle
+
+```text
+Product Catalog menyediakan data operasional melalui REST API sebagai System of Record.
+
+Reporting Service bertanggung jawab atas:
+- Agregasi data
+- Dashboard
+- Export (CSV, Excel, PDF)
+- Scheduled Report
+- Business Analytics
+- Data Presentation
+
+Product Catalog tidak menyimpan hasil agregasi maupun laporan yang telah dihasilkan.
+```
+
+Prinsip ini konsisten dengan seluruh BRD, FSD, dan TSD yang telah disusun, menjaga **separation of concerns**, serta mencegah Product Catalog berkembang menjadi layanan reporting yang berada di luar ruang lingkup bisnisnya.
 
 ---
 
