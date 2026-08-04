@@ -7,6 +7,6 @@ import java.util.Optional;
 import java.util.UUID;
 
 public interface ProductVersionJpaRepository extends JpaRepository<ProductVersionJpaEntity, UUID> {
-    List<ProductVersionJpaEntity> findByProductIdOrderByVersionAsc(UUID productId);
-    Optional<ProductVersionJpaEntity> findByProductIdAndVersion(UUID productId, int version);
+    List<ProductVersionJpaEntity> findByProductIdOrderByVersionNumberAsc(UUID productId);
+    Optional<ProductVersionJpaEntity> findByProductIdAndVersionNumber(UUID productId, int versionNumber);
 }

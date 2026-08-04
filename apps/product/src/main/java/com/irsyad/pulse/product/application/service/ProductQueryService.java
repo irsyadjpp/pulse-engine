@@ -5,10 +5,10 @@ import com.irsyad.pulse.product.application.query.product.SearchProductQuery;
 import com.irsyad.pulse.product.domain.product.Product;
 import com.irsyad.pulse.product.shared.exception.ProductNotFoundException;
 import org.springframework.cache.annotation.Cacheable;
+import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
 import java.util.UUID;
 
 /**
@@ -35,10 +35,10 @@ public class ProductQueryService {
     }
 
     @Transactional(readOnly = true)
-    @Cacheable(cacheNames = "productListing", key = "{#query.companyId(), #query.productCode(), #query.productName(), #query.category(), #query.status(), #query.effectiveDate(), #query.page(), #query.size()}")
-    public List<Product> search(SearchProductQuery query) {
+    @Cacheable(cacheNames = "productListing", key = "{#query.companyId(), #query.productCode(), #query.productName(), #query.category(), #query.status(), #query.effectiveDate(), #query.sort(), #query.page(), #query.size()}")
+    public Page<Product> search(SearchProductQuery query) {
         return this.productRepositoryPort.search(
                 query.companyId(), query.productCode(), query.productName(), query.category(),
-                query.status(), query.effectiveDate(), query.page(), query.size());
+                query.status(), query.effectiveDate(), query.sort(), query.page(), query.size());
     }
 }

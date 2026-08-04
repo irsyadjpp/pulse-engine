@@ -23,6 +23,7 @@ public class ProductVersion {
     private ProductStatus status;
     private final LocalDate effectiveDate;
     private final Instant publishedDate;
+    private final String snapshot;
     private final Instant createdAt;
     private final String createdBy;
 }

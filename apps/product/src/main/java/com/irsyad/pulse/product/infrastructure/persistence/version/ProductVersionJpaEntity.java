@@ -18,7 +18,6 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import lombok.Setter;
 
 /**
  * JPA entity mapping the product_version table (Appendix O).
@@ -27,7 +26,6 @@ import lombok.Setter;
 @Entity
 @Table(name = "product_version")
 @Getter
-@Setter
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
@@ -41,8 +39,8 @@ public class ProductVersionJpaEntity {
     @Column(name = "product_id", nullable = false, updatable = false)
     private UUID productId;
 
-    @Column(name = "version", nullable = false)
-    private int version;
+    @Column(name = "version_number", nullable = false)
+    private int versionNumber;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, length = 20)

@@ -1,6 +1,7 @@
 package com.irsyad.pulse.product.api.product;
 
 import com.irsyad.pulse.product.api.common.ApiResponse;
+import com.irsyad.pulse.product.api.common.PageResult;
 import com.irsyad.pulse.product.application.command.product.CreateProductCommand;
 import com.irsyad.pulse.product.application.command.product.UpdateProductCommand;
 import com.irsyad.pulse.product.application.query.product.SearchProductQuery;
@@ -11,6 +12,7 @@ import com.irsyad.pulse.product.domain.shared.ProductStatus;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -23,7 +25,6 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.time.LocalDate;
-import java.util.List;
 import java.util.UUID;
 
 /**
@@ -85,21 +86,28 @@ public class ProductController {
     }
 
     @GetMapping
-    @Operation(summary = "Search Product", description = "Searches Products with pagination and filtering.")
-    public ResponseEntity<ApiResponse<List<ProductResponse>>> search(
+    @Operation(summary = "Search Product", description = "Searches Products with pagination, filtering and sorting (TSD_04 Section 12-14).")
+    public ResponseEntity<ApiResponse<PageResult<ProductResponse>>> search(
             @RequestParam(required = false) UUID companyId,
             @RequestParam(required = false) String productCode,
             @RequestParam(required = false) String productName,
             @RequestParam(required = false) String category,
             @RequestParam(required = false) ProductStatus status,
             @RequestParam(required = false) LocalDate effectiveDate,
+            @RequestParam(required = false) String sort,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
+        if (size > 100) {
+            throw new IllegalArgumentException("size must not exceed 100 (TSD_04 Section 28.2).");
+        }
         SearchProductQuery query = new SearchProductQuery(
-                companyId, productCode, productName, category, status, effectiveDate, page, size);
-        List<ProductResponse> result = this.productQueryService.search(query).stream()
-                .map(this::toResponse)
-                .toList();
+                companyId, productCode, productName, category, status, effectiveDate, sort, page, size);
+        Page<Product> resultPage = this.productQueryService.search(query);
+        PageResult<ProductResponse> result = PageResult.of(
+                resultPage.getContent().stream().map(this::toResponse).toList(),
+                resultPage.getNumber(),
+                resultPage.getSize(),
+                resultPage.getTotalElements());
         return ResponseEntity.ok(ApiResponse.success(result));
     }
 

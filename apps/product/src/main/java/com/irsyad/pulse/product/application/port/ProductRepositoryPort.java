@@ -2,9 +2,9 @@ package com.irsyad.pulse.product.application.port;
 
 import com.irsyad.pulse.product.domain.product.Product;
 import com.irsyad.pulse.product.domain.shared.ProductStatus;
+import org.springframework.data.domain.Page;
 
 import java.time.LocalDate;
-import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -20,6 +20,6 @@ public interface ProductRepositoryPort {
 
     Optional<Product> findByCompanyIdAndProductCode(UUID companyId, String productCode);
 
-    List<Product> search(UUID companyId, String productCode, String productName, String category,
-                         ProductStatus status, LocalDate effectiveDate, int page, int size);
+    Page<Product> search(UUID companyId, String productCode, String productName, String category,
+                         ProductStatus status, LocalDate effectiveDate, String sort, int page, int size);
 }

@@ -1,9 +1,11 @@
 package com.irsyad.pulse.product.shared.exception;
 
-import com.irsyad.pulse.product.api.common.ErrorCode;
-
-public class ProductNotReadyException extends ProductCatalogException {
+/**
+ * Thrown when a Product is not ready for publishing.
+ * Maps to HTTP 409 Conflict (TSD_05 Section 18).
+ */
+public class ProductNotReadyException extends BusinessException {
     public ProductNotReadyException(String message) {
-        super(ErrorCode.PRODUCT_NOT_READY, message);
+        super(message);
     }
 }

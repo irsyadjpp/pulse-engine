@@ -1,14 +1,17 @@
 package com.irsyad.pulse.product.api.company;
 
 import com.irsyad.pulse.product.api.common.ApiResponse;
+import com.irsyad.pulse.product.api.common.PageResult;
 import com.irsyad.pulse.product.application.command.company.CreateCompanyCommand;
 import com.irsyad.pulse.product.application.command.company.UpdateCompanyCommand;
 import com.irsyad.pulse.product.application.query.company.SearchCompanyQuery;
 import com.irsyad.pulse.product.application.service.CompanyApplicationService;
 import com.irsyad.pulse.product.domain.company.Company;
+import com.irsyad.pulse.product.domain.shared.CompanyStatus;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -20,7 +23,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.util.List;
 import java.util.UUID;
 
 /**
@@ -78,15 +80,23 @@ public class CompanyController {
     }
 
     @GetMapping
-    @Operation(summary = "Search Company", description = "Searches Insurance Companies with pagination.")
-    public ResponseEntity<ApiResponse<List<CompanyResponse>>> search(
+    @Operation(summary = "Search Company", description = "Searches Insurance Companies with pagination and filtering (TSD_04 Section 12-14).")
+    public ResponseEntity<ApiResponse<PageResult<CompanyResponse>>> search(
             @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) CompanyStatus status,
+            @RequestParam(required = false) String sort,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
-        SearchCompanyQuery query = new SearchCompanyQuery(keyword, page, size);
-        List<CompanyResponse> result = this.companyApplicationService.search(query).stream()
-                .map(this::toResponse)
-                .toList();
+        if (size > 100) {
+            throw new IllegalArgumentException("size must not exceed 100 (TSD_04 Section 28.2).");
+        }
+        SearchCompanyQuery query = new SearchCompanyQuery(keyword, status, sort, page, size);
+        Page<Company> resultPage = this.companyApplicationService.search(query);
+        PageResult<CompanyResponse> result = PageResult.of(
+                resultPage.getContent().stream().map(this::toResponse).toList(),
+                resultPage.getNumber(),
+                resultPage.getSize(),
+                resultPage.getTotalElements());
         return ResponseEntity.ok(ApiResponse.success(result));
     }
 

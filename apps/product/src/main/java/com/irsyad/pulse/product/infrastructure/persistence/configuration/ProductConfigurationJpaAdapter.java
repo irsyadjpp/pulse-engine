@@ -222,6 +222,60 @@ public class ProductConfigurationJpaAdapter implements ProductConfigurationPort 
                 .documentName(saved.getDocumentName()).documentType(saved.getDocumentType()).storageReference(saved.getStorageReference()).build();
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public List<Coverage> findCoverages(UUID productVersionId) {
+        return this.coverageJpaRepository.findByProductVersionId(productVersionId).stream()
+                .map(e -> Coverage.builder().coverageId(e.getId()).productVersionId(e.getProductVersionId())
+                        .coverageAmount(e.getCoverageAmount()).currency(e.getCurrency()).build())
+                .toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<Benefit> findBenefits(UUID productVersionId) {
+        return this.benefitJpaRepository.findByProductVersionId(productVersionId).stream()
+                .map(e -> Benefit.builder().benefitId(e.getId()).productVersionId(e.getProductVersionId())
+                        .benefitName(e.getBenefitName()).description(e.getDescription()).maximumLimit(e.getMaximumLimit()).build())
+                .toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<Exclusion> findExclusions(UUID productVersionId) {
+        return this.exclusionJpaRepository.findByProductVersionId(productVersionId).stream()
+                .map(e -> Exclusion.builder().exclusionId(e.getId()).productVersionId(e.getProductVersionId())
+                        .description(e.getDescription()).build())
+                .toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Eligibility findEligibility(UUID productVersionId) {
+        return this.eligibilityJpaRepository.findByProductVersionId(productVersionId)
+                .map(this::toEligibility)
+                .orElse(null);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<PremiumConfiguration> findPremiums(UUID productVersionId) {
+        return this.premiumConfigurationJpaRepository.findByProductVersionId(productVersionId).stream()
+                .map(e -> PremiumConfiguration.builder().premiumConfigurationId(e.getId())
+                        .productVersionId(e.getProductVersionId()).coverageBand(e.getCoverageBand())
+                        .ageBand(e.getAgeBand()).occupationClass(e.getOccupationClass()).basePremium(e.getBasePremium()).build())
+                .toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<ProductDocument> findDocuments(UUID productVersionId) {
+        return this.productDocumentJpaRepository.findByProductVersionId(productVersionId).stream()
+                .map(e -> ProductDocument.builder().documentId(e.getId()).productVersionId(e.getProductVersionId())
+                        .documentName(e.getDocumentName()).documentType(e.getDocumentType()).storageReference(e.getStorageReference()).build())
+                .toList();
+    }
+
     private Eligibility toEligibility(EligibilityJpaEntity e) {
         return Eligibility.builder().eligibilityId(e.getId()).productVersionId(e.getProductVersionId())
                 .minimumAge(e.getMinimumAge()).maximumAge(e.getMaximumAge()).occupationClass(e.getOccupationClass())

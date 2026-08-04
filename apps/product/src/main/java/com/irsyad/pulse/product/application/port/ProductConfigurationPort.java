@@ -40,4 +40,18 @@ public interface ProductConfigurationPort {
     List<ProductDocument> replaceDocuments(UUID productVersionId, List<ProductDocument> documents);
 
     ProductDocument addDocument(UUID productVersionId, ProductDocument document);
+
+    // ---- Read (for immutable snapshot) ----
+
+    List<Coverage> findCoverages(UUID productVersionId);
+
+    List<Benefit> findBenefits(UUID productVersionId);
+
+    List<Exclusion> findExclusions(UUID productVersionId);
+
+    Eligibility findEligibility(UUID productVersionId);
+
+    List<PremiumConfiguration> findPremiums(UUID productVersionId);
+
+    List<ProductDocument> findDocuments(UUID productVersionId);
 }

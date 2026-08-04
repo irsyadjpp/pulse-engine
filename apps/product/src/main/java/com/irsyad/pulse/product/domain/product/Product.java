@@ -7,7 +7,11 @@ import com.irsyad.pulse.product.domain.product.eligibility.Eligibility;
 import com.irsyad.pulse.product.domain.product.exclusion.Exclusion;
 import com.irsyad.pulse.product.domain.product.premium.PremiumConfiguration;
 import com.irsyad.pulse.product.domain.shared.DomainEvent;
+import com.irsyad.pulse.product.domain.shared.ProductCreatedEvent;
 import com.irsyad.pulse.product.domain.shared.ProductStatus;
+import com.irsyad.pulse.product.domain.shared.ProductUpdatedEvent;
+import com.irsyad.pulse.product.shared.exception.InvalidProductStatusException;
+import com.irsyad.pulse.product.shared.exception.ProductNotReadyException;
 
 import lombok.Builder;
 import lombok.Getter;
@@ -56,18 +60,53 @@ public class Product {
     private final List<DomainEvent> domainEvents = new ArrayList<>();
 
     /**
+     * Factory creation method (TSD_02 Section 18).
+     * Ensures the aggregate is always valid when created.
+     */
+    public static Product create(UUID productId, UUID companyId, String productCode, String productName,
+                                 String category, LocalDate effectiveDate, LocalDate expiryDate,
+                                 String createdBy) {
+        if (companyId == null) {
+            throw new IllegalArgumentException("Company ID is required (BR-002).");
+        }
+        if (productCode == null || productCode.isBlank()) {
+            throw new IllegalArgumentException("Product Code is required.");
+        }
+        Product product = Product.builder()
+                .productId(productId)
+                .companyId(companyId)
+                .productCode(productCode)
+                .productName(productName)
+                .category(category)
+                .version(1)
+                .status(ProductStatus.DRAFT)
+                .effectiveDate(effectiveDate)
+                .expiryDate(expiryDate)
+                .createdAt(Instant.now())
+                .createdBy(createdBy)
+                .updatedAt(Instant.now())
+                .updatedBy(createdBy)
+                .optimisticLockVersion(0L)
+                .deleted(false)
+                .build();
+        product.record(ProductCreatedEvent.of(productId, companyId, productCode));
+        return product;
+    }
+
+    /**
      * BR-004: Published product cannot be modified directly.
      * Changing a published product requires a new Draft version (BR-005).
      */
     public void updateDraft(String productName, String category, LocalDate effectiveDate, LocalDate expiryDate) {
         if (this.status == ProductStatus.PUBLISHED || this.status == ProductStatus.ARCHIVED) {
-            throw new IllegalStateException("Only DRAFT product can be updated directly.");
+            throw new InvalidProductStatusException("Only DRAFT product can be updated directly.");
         }
         this.productName = productName;
         this.category = category;
         this.effectiveDate = effectiveDate;
         this.expiryDate = expiryDate;
         this.updatedAt = Instant.now();
+        this.record(ProductUpdatedEvent.of(this.productId));
     }
 
     /**
@@ -76,19 +115,19 @@ public class Product {
      */
     public void publish() {
         if (this.status != ProductStatus.DRAFT) {
-            throw new IllegalStateException("Only DRAFT product can be published.");
+            throw new InvalidProductStatusException("Only DRAFT product can be published.");
         }
         if (this.benefits.isEmpty()) {
-            throw new IllegalStateException("Product must have at least one benefit (BR-008).");
+            throw new ProductNotReadyException("Product must have at least one benefit (BR-008).");
         }
         if (this.coverages.isEmpty()) {
-            throw new IllegalStateException("Product must have at least one coverage (BR-009).");
+            throw new ProductNotReadyException("Product must have at least one coverage (BR-009).");
         }
         if (this.eligibility == null) {
-            throw new IllegalStateException("Eligibility must be configured before publish (BR-010).");
+            throw new ProductNotReadyException("Eligibility must be configured before publish (BR-010).");
         }
         if (this.premiumConfigurations.isEmpty()) {
-            throw new IllegalStateException("Premium configuration is required before publish (BR-011).");
+            throw new ProductNotReadyException("Premium configuration is required before publish (BR-011).");
         }
         this.status = ProductStatus.PUBLISHED;
         this.updatedAt = Instant.now();
@@ -100,7 +139,7 @@ public class Product {
      */
     public void archive() {
         if (this.status != ProductStatus.PUBLISHED) {
-            throw new IllegalStateException("Only PUBLISHED product can be archived.");
+            throw new InvalidProductStatusException("Only PUBLISHED product can be archived.");
         }
         this.status = ProductStatus.ARCHIVED;
         this.updatedAt = Instant.now();
@@ -112,7 +151,7 @@ public class Product {
      */
     public void createNewVersion() {
         if (this.status != ProductStatus.PUBLISHED) {
-            throw new IllegalStateException("New version can only be created from PUBLISHED product.");
+            throw new InvalidProductStatusException("New version can only be created from PUBLISHED product.");
         }
         int oldVersion = this.version;
         this.status = ProductStatus.DRAFT;
@@ -141,7 +180,7 @@ public class Product {
 
     public void configureEligibility(Eligibility eligibility) {
         if (this.status == ProductStatus.PUBLISHED || this.status == ProductStatus.ARCHIVED) {
-            throw new IllegalStateException("Published/Archived product configuration cannot be modified directly.");
+            throw new InvalidProductStatusException("Published/Archived product configuration cannot be modified directly.");
         }
         this.eligibility = eligibility;
         this.updatedAt = Instant.now();

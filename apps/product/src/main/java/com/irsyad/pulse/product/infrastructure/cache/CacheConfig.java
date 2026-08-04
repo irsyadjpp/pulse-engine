@@ -20,16 +20,42 @@ public class CacheConfig {
 
     public static final String PRODUCT_DETAIL_CACHE = "productDetail";
     public static final String PRODUCT_LISTING_CACHE = "productListing";
+    public static final String COMPANY_CACHE = "company";
+    public static final String COMPANY_SEARCH_CACHE = "companySearch";
+    public static final String PRODUCT_VERSION_CACHE = "product-version";
+    public static final String VERSION_HISTORY_CACHE = "versionHistory";
 
     @Bean
     public CacheManager cacheManager(RedisConnectionFactory redisConnectionFactory) {
-        RedisCacheConfiguration configuration = RedisCacheConfiguration.defaultCacheConfig()
-                .entryTtl(Duration.ofMinutes(10))
+        RedisCacheConfiguration defaultConfig = RedisCacheConfiguration.defaultCacheConfig()
                 .disableCachingNullValues();
+
+        RedisCacheConfiguration productDetailConfig = defaultConfig
+                .entryTtl(Duration.ofMinutes(30));
+        
+        RedisCacheConfiguration productListingConfig = defaultConfig
+                .entryTtl(Duration.ofMinutes(10));
+        
+        RedisCacheConfiguration companyConfig = defaultConfig
+                .entryTtl(Duration.ofMinutes(30));
+        
+        RedisCacheConfiguration companySearchConfig = defaultConfig
+                .entryTtl(Duration.ofMinutes(10));
+        
+        RedisCacheConfiguration productVersionConfig = defaultConfig
+                .entryTtl(Duration.ofHours(24));
+        
+        RedisCacheConfiguration versionHistoryConfig = defaultConfig
+                .entryTtl(Duration.ofMinutes(60));
+
         return RedisCacheManager.builder(redisConnectionFactory)
-                .cacheDefaults(configuration)
-                .withCacheConfiguration(PRODUCT_DETAIL_CACHE, configuration)
-                .withCacheConfiguration(PRODUCT_LISTING_CACHE, configuration)
+                .cacheDefaults(defaultConfig.entryTtl(Duration.ofMinutes(10)))
+                .withCacheConfiguration(PRODUCT_DETAIL_CACHE, productDetailConfig)
+                .withCacheConfiguration(PRODUCT_LISTING_CACHE, productListingConfig)
+                .withCacheConfiguration(COMPANY_CACHE, companyConfig)
+                .withCacheConfiguration(COMPANY_SEARCH_CACHE, companySearchConfig)
+                .withCacheConfiguration(PRODUCT_VERSION_CACHE, productVersionConfig)
+                .withCacheConfiguration(VERSION_HISTORY_CACHE, versionHistoryConfig)
                 .build();
     }
 }

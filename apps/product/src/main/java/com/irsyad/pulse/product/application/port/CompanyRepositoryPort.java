@@ -1,8 +1,9 @@
 package com.irsyad.pulse.product.application.port;
 
 import com.irsyad.pulse.product.domain.company.Company;
+import com.irsyad.pulse.product.domain.shared.CompanyStatus;
+import org.springframework.data.domain.Page;
 
-import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -18,5 +19,5 @@ public interface CompanyRepositoryPort {
 
     Optional<Company> findByCompanyCode(String companyCode);
 
-    List<Company> search(String keyword, int page, int size);
+    Page<Company> search(String keyword, CompanyStatus status, String sort, int page, int size);
 }

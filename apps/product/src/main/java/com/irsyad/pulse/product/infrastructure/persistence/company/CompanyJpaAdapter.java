@@ -3,11 +3,12 @@ package com.irsyad.pulse.product.infrastructure.persistence.company;
 import com.irsyad.pulse.product.application.port.CompanyRepositoryPort;
 import com.irsyad.pulse.product.domain.company.Company;
 import com.irsyad.pulse.product.domain.shared.CompanyStatus;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Component;
 
-import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -44,12 +45,21 @@ public class CompanyJpaAdapter implements CompanyRepositoryPort {
     }
 
     @Override
-    public List<Company> search(String keyword, int page, int size) {
-        Pageable pageable = PageRequest.of(page, size);
-        return this.companyJpaRepository.findAll(pageable).stream()
-                .filter(entity -> !entity.isDeleted())
-                .map(this::toDomain)
-                .toList();
+    public Page<Company> search(String keyword, CompanyStatus status, String sort, int page, int size) {
+        Pageable pageable = PageRequest.of(page, size, this.sort(sort));
+        return this.companyJpaRepository.search(keyword, status, pageable)
+                .map(this::toDomain);
+    }
+
+    private Sort sort(String sort) {
+        if (sort == null || sort.isBlank()) {
+            return Sort.by(Sort.Direction.ASC, "companyName");
+        }
+        String[] parts = sort.split(",");
+        String property = parts[0].trim();
+        Sort.Direction direction = parts.length > 1 && "desc".equalsIgnoreCase(parts[1].trim())
+                ? Sort.Direction.DESC : Sort.Direction.ASC;
+        return Sort.by(direction, property);
     }
 
     private CompanyJpaEntity toEntity(Company company) {

@@ -29,14 +29,14 @@ public class ProductVersionJpaAdapter implements ProductVersionPort {
 
     @Override
     public List<ProductVersion> findByProductId(UUID productId) {
-        return this.productVersionJpaRepository.findByProductIdOrderByVersionAsc(productId).stream()
+        return this.productVersionJpaRepository.findByProductIdOrderByVersionNumberAsc(productId).stream()
                 .map(this::toDomain)
                 .toList();
     }
 
     @Override
     public Optional<ProductVersion> findByProductIdAndVersion(UUID productId, int version) {
-        return this.productVersionJpaRepository.findByProductIdAndVersion(productId, version)
+        return this.productVersionJpaRepository.findByProductIdAndVersionNumber(productId, version)
                 .map(this::toDomain);
     }
 
@@ -44,10 +44,11 @@ public class ProductVersionJpaAdapter implements ProductVersionPort {
         return ProductVersionJpaEntity.builder()
                 .id(version.getProductVersionId())
                 .productId(version.getProductId())
-                .version(version.getVersion())
+                .versionNumber(version.getVersion())
                 .status(version.getStatus() != null ? version.getStatus() : ProductStatus.DRAFT)
                 .effectiveDate(version.getEffectiveDate())
                 .publishedAt(version.getPublishedDate())
+                .snapshot(version.getSnapshot())
                 .createdAt(version.getCreatedAt())
                 .createdBy(version.getCreatedBy())
                 .build();
@@ -57,10 +58,11 @@ public class ProductVersionJpaAdapter implements ProductVersionPort {
         return ProductVersion.builder()
                 .productVersionId(entity.getId())
                 .productId(entity.getProductId())
-                .version(entity.getVersion())
+                .version(entity.getVersionNumber())
                 .status(entity.getStatus())
                 .effectiveDate(entity.getEffectiveDate())
                 .publishedDate(entity.getPublishedAt())
+                .snapshot(entity.getSnapshot())
                 .createdAt(entity.getCreatedAt())
                 .createdBy(entity.getCreatedBy())
                 .build();

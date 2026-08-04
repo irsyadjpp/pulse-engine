@@ -13,6 +13,8 @@ import java.util.UUID;
 @Service
 public class VersionQueryService {
 
+    private static final String PRODUCT_VERSION_CACHE = "product-version";
+
     private final ProductVersionPort productVersionPort;
 
     public VersionQueryService(ProductVersionPort productVersionPort) {
@@ -20,13 +22,13 @@ public class VersionQueryService {
     }
 
     @Transactional(readOnly = true)
-    @Cacheable(value = "product-version", key = "#productId")
+    @Cacheable(value = PRODUCT_VERSION_CACHE, key = "#productId")
     public List<ProductVersion> history(UUID productId) {
         return this.productVersionPort.findByProductId(productId);
     }
 
     @Transactional(readOnly = true)
-    @Cacheable(value = "product-version", key = "#productId + '::' + #version")
+    @Cacheable(value = PRODUCT_VERSION_CACHE, key = "#productId + '::' + #version")
     public ProductVersion detail(UUID productId, int version) {
         return this.productVersionPort.findByProductIdAndVersion(productId, version)
                 .orElseThrow(() -> new VersionNotFoundException("Version not found."));

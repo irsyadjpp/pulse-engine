@@ -14,6 +14,7 @@ public enum AuditAction {
     ACTIVATE,
     DEACTIVATE,
     VERSION_CREATED,
+    VERSION_ACCESSED,
     DOCUMENT_UPLOAD,
     DOCUMENT_DELETE
 }

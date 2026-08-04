@@ -12,11 +12,12 @@ import com.irsyad.pulse.product.domain.shared.CompanyStatus;
 import com.irsyad.pulse.product.domain.shared.EntityName;
 import com.irsyad.pulse.product.shared.exception.CompanyNotFoundException;
 import com.irsyad.pulse.product.shared.exception.DuplicateCompanyCodeException;
+import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.data.domain.Page;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
-import java.util.List;
 import java.util.UUID;
 
 /**
@@ -30,10 +31,13 @@ public class CompanyApplicationService {
 
     private final CompanyRepositoryPort companyRepositoryPort;
     private final AuditPort auditPort;
+    private final ApplicationEventPublisher eventPublisher;
 
-    public CompanyApplicationService(CompanyRepositoryPort companyRepositoryPort, AuditPort auditPort) {
+    public CompanyApplicationService(CompanyRepositoryPort companyRepositoryPort, AuditPort auditPort,
+                                     ApplicationEventPublisher eventPublisher) {
         this.companyRepositoryPort = companyRepositoryPort;
         this.auditPort = auditPort;
+        this.eventPublisher = eventPublisher;
     }
 
     @Transactional
@@ -57,6 +61,7 @@ public class CompanyApplicationService {
                 .deleted(false)
                 .build();
         Company saved = this.companyRepositoryPort.save(company);
+        this.publishEvents(saved);
         this.auditPort.save(this.audit(EntityName.COMPANY, saved.getCompanyId(), AuditAction.CREATE, null, null));
         return saved;
     }
@@ -67,6 +72,7 @@ public class CompanyApplicationService {
                 .orElseThrow(() -> new CompanyNotFoundException("Company not found."));
         company.updateProfile(command.companyName(), command.logoUrl(), command.contactInformation());
         Company saved = this.companyRepositoryPort.save(company);
+        this.publishEvents(saved);
         this.auditPort.save(this.audit(EntityName.COMPANY, saved.getCompanyId(), AuditAction.UPDATE, null, null));
         return saved;
     }
@@ -77,6 +83,7 @@ public class CompanyApplicationService {
                 .orElseThrow(() -> new CompanyNotFoundException("Company not found."));
         company.activate();
         Company saved = this.companyRepositoryPort.save(company);
+        this.publishEvents(saved);
         this.auditPort.save(this.audit(EntityName.COMPANY, saved.getCompanyId(), AuditAction.ACTIVATE, null, null));
         return saved;
     }
@@ -87,6 +94,7 @@ public class CompanyApplicationService {
                 .orElseThrow(() -> new CompanyNotFoundException("Company not found."));
         company.deactivate();
         Company saved = this.companyRepositoryPort.save(company);
+        this.publishEvents(saved);
         this.auditPort.save(this.audit(EntityName.COMPANY, saved.getCompanyId(), AuditAction.DEACTIVATE, null, null));
         return saved;
     }
@@ -98,8 +106,13 @@ public class CompanyApplicationService {
     }
 
     @Transactional(readOnly = true)
-    public List<Company> search(SearchCompanyQuery query) {
-        return this.companyRepositoryPort.search(query.keyword(), query.page(), query.size());
+    public Page<Company> search(SearchCompanyQuery query) {
+        return this.companyRepositoryPort.search(query.keyword(), query.status(), query.sort(),
+                query.page(), query.size());
+    }
+
+    private void publishEvents(Company company) {
+        company.pullDomainEvents().forEach(this.eventPublisher::publishEvent);
     }
 
     private AuditHistory audit(EntityName entityName, UUID entityId, AuditAction action,
