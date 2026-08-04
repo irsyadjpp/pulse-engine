@@ -10,15 +10,16 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import jakarta.persistence.Version;
-import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
 
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.UUID;
+
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 /**
  * JPA entity mapping the product table (Appendix O).
@@ -27,15 +28,16 @@ import java.util.UUID;
 @Entity
 @Table(name = "product")
 @Getter
+@Setter
 @Builder
-@NoArgsConstructor(access = AccessLevel.PROTECTED)
+@NoArgsConstructor
 @AllArgsConstructor
 public class ProductJpaEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
-    @Column(name = "product_id", nullable = false, updatable = false)
-    private UUID productId;
+    @Column(name = "id", nullable = false, updatable = false)
+    private UUID id;
 
     @Column(name = "company_id", nullable = false, updatable = false)
     private UUID companyId;
@@ -49,8 +51,8 @@ public class ProductJpaEntity {
     @Column(name = "category", length = 100)
     private String category;
 
-    @Column(name = "version", nullable = false)
-    private int version;
+    @Column(name = "current_version", nullable = false)
+    private int currentVersion;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, length = 20)
@@ -75,8 +77,8 @@ public class ProductJpaEntity {
     private String updatedBy;
 
     @Version
-    @Column(name = "optimistic_lock_version", nullable = false)
-    private long optimisticLockVersion;
+    @Column(name = "version", nullable = false)
+    private long version;
 
     @Column(name = "deleted", nullable = false)
     private boolean deleted;

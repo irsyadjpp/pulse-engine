@@ -2,10 +2,14 @@ package com.irsyad.pulse.product.application.service;
 
 import com.irsyad.pulse.product.application.command.company.CreateCompanyCommand;
 import com.irsyad.pulse.product.application.command.company.UpdateCompanyCommand;
+import com.irsyad.pulse.product.application.port.AuditPort;
 import com.irsyad.pulse.product.application.port.CompanyRepositoryPort;
 import com.irsyad.pulse.product.application.query.company.SearchCompanyQuery;
+import com.irsyad.pulse.product.domain.audit.AuditHistory;
 import com.irsyad.pulse.product.domain.company.Company;
+import com.irsyad.pulse.product.domain.shared.AuditAction;
 import com.irsyad.pulse.product.domain.shared.CompanyStatus;
+import com.irsyad.pulse.product.domain.shared.EntityName;
 import com.irsyad.pulse.product.shared.exception.CompanyNotFoundException;
 import com.irsyad.pulse.product.shared.exception.DuplicateCompanyCodeException;
 import org.springframework.transaction.annotation.Transactional;
@@ -25,9 +29,11 @@ import java.util.UUID;
 public class CompanyApplicationService {
 
     private final CompanyRepositoryPort companyRepositoryPort;
+    private final AuditPort auditPort;
 
-    public CompanyApplicationService(CompanyRepositoryPort companyRepositoryPort) {
+    public CompanyApplicationService(CompanyRepositoryPort companyRepositoryPort, AuditPort auditPort) {
         this.companyRepositoryPort = companyRepositoryPort;
+        this.auditPort = auditPort;
     }
 
     @Transactional
@@ -50,7 +56,9 @@ public class CompanyApplicationService {
                 .version(0L)
                 .deleted(false)
                 .build();
-        return this.companyRepositoryPort.save(company);
+        Company saved = this.companyRepositoryPort.save(company);
+        this.auditPort.save(this.audit(EntityName.COMPANY, saved.getCompanyId(), AuditAction.CREATE, null, null));
+        return saved;
     }
 
     @Transactional
@@ -58,7 +66,9 @@ public class CompanyApplicationService {
         Company company = this.companyRepositoryPort.findById(command.companyId())
                 .orElseThrow(() -> new CompanyNotFoundException("Company not found."));
         company.updateProfile(command.companyName(), command.logoUrl(), command.contactInformation());
-        return this.companyRepositoryPort.save(company);
+        Company saved = this.companyRepositoryPort.save(company);
+        this.auditPort.save(this.audit(EntityName.COMPANY, saved.getCompanyId(), AuditAction.UPDATE, null, null));
+        return saved;
     }
 
     @Transactional
@@ -66,7 +76,9 @@ public class CompanyApplicationService {
         Company company = this.companyRepositoryPort.findById(companyId)
                 .orElseThrow(() -> new CompanyNotFoundException("Company not found."));
         company.activate();
-        return this.companyRepositoryPort.save(company);
+        Company saved = this.companyRepositoryPort.save(company);
+        this.auditPort.save(this.audit(EntityName.COMPANY, saved.getCompanyId(), AuditAction.ACTIVATE, null, null));
+        return saved;
     }
 
     @Transactional
@@ -74,7 +86,9 @@ public class CompanyApplicationService {
         Company company = this.companyRepositoryPort.findById(companyId)
                 .orElseThrow(() -> new CompanyNotFoundException("Company not found."));
         company.deactivate();
-        return this.companyRepositoryPort.save(company);
+        Company saved = this.companyRepositoryPort.save(company);
+        this.auditPort.save(this.audit(EntityName.COMPANY, saved.getCompanyId(), AuditAction.DEACTIVATE, null, null));
+        return saved;
     }
 
     @Transactional(readOnly = true)
@@ -86,5 +100,19 @@ public class CompanyApplicationService {
     @Transactional(readOnly = true)
     public List<Company> search(SearchCompanyQuery query) {
         return this.companyRepositoryPort.search(query.keyword(), query.page(), query.size());
+    }
+
+    private AuditHistory audit(EntityName entityName, UUID entityId, AuditAction action,
+                               String beforeData, String afterData) {
+        return AuditHistory.builder()
+                .auditId(UUID.randomUUID())
+                .entityName(entityName)
+                .entityId(entityId)
+                .action(action)
+                .beforeData(beforeData)
+                .afterData(afterData)
+                .createdBy("system")
+                .createdAt(Instant.now())
+                .build();
     }
 }

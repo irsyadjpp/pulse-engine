@@ -1,10 +1,8 @@
 package com.irsyad.pulse.product.domain.product.document;
 
+import java.util.UUID;
 import lombok.Builder;
 import lombok.Getter;
-
-import java.util.UUID;
-
 /**
  * Product document metadata (FSD_03 Section 10).
  * Child entity of the Product aggregate.
@@ -12,7 +10,6 @@ import java.util.UUID;
 @Getter
 @Builder
 public class ProductDocument {
-
     private final UUID documentId;
     private final UUID productVersionId;
     private String documentName;

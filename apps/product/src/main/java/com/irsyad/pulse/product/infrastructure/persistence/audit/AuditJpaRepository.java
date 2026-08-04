@@ -6,5 +6,5 @@ import java.util.List;
 import java.util.UUID;
 
 public interface AuditJpaRepository extends JpaRepository<AuditJpaEntity, UUID> {
-    List<AuditJpaEntity> findByEntityIdOrderByCreatedAtDesc(UUID entityId);
+    List<AuditJpaEntity> findByEntityIdOrderByPerformedAtDesc(UUID entityId);
 }

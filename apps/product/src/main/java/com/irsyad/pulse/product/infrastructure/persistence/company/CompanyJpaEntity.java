@@ -10,14 +10,15 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import jakarta.persistence.Version;
-import lombok.AccessLevel;
+
+import java.time.Instant;
+import java.util.UUID;
+
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-
-import java.time.Instant;
-import java.util.UUID;
+import lombok.Setter;
 
 /**
  * JPA entity mapping the insurance_company table (Appendix O).
@@ -26,15 +27,16 @@ import java.util.UUID;
 @Entity
 @Table(name = "insurance_company")
 @Getter
+@Setter
 @Builder
-@NoArgsConstructor(access = AccessLevel.PROTECTED)
+@NoArgsConstructor
 @AllArgsConstructor
 public class CompanyJpaEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
-    @Column(name = "company_id", nullable = false, updatable = false)
-    private UUID companyId;
+    @Column(name = "id", nullable = false, updatable = false)
+    private UUID id;
 
     @Column(name = "company_code", nullable = false, unique = true, length = 50)
     private String companyCode;

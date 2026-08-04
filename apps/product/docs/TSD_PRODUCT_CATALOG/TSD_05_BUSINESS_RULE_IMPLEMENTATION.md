@@ -795,6 +795,83 @@ BRD tidak mendefinisikan event publishing ke Kafka atau message broker.
 
 ---
 
+# 27. Compliance & Audit Trail
+
+## 27.1 Regulatory Compliance
+
+Business Rule implementation memenuhi persyaratan compliance:
+
+* **UU PDP No. 27/2022** - Perlindungan Data Pribadi
+  * Audit trail untuk seluruh perubahan data
+  * Data integrity melalui business validation
+  * Retention policy untuk audit logs
+
+* **POJK No. 13/2017** - Penggunaan TI
+  * Immutable audit trail
+  * Business rule enforcement
+  * Change tracking
+
+* **ISO/IEC 27001:2022** - ISMS
+  * A.14 System Acquisition - Security requirements in development
+  * A.12 Operations Security - Logging and monitoring
+
+Lihat [Enterprise Standards & Compliance Framework](../../../docs/16. ENTERPRISE_STANDARDS.md) untuk detail lengkap.
+
+---
+
+## 27.2 Audit Trail Requirements
+
+Setiap Business Rule change harus menghasilkan audit event:
+
+| Business Rule | Audit Event | Retention |
+|---------------|-------------|-----------|
+| Company Created | COMPANY_CREATED | 7 years |
+| Company Updated | COMPANY_UPDATED | 7 years |
+| Company Activated | COMPANY_ACTIVATED | 7 years |
+| Company Deactivated | COMPANY_DEACTIVATED | 7 years |
+| Product Created | PRODUCT_CREATED | 10 years |
+| Product Updated | PRODUCT_UPDATED | 10 years |
+| Product Published | PRODUCT_PUBLISHED | 10 years |
+| Product Archived | PRODUCT_ARCHIVED | 10 years |
+| Coverage Updated | COVERAGE_UPDATED | 7 years |
+| Benefit Updated | BENEFIT_UPDATED | 7 years |
+| Eligibility Updated | ELIGIBILITY_UPDATED | 7 years |
+| Premium Updated | PREMIUM_UPDATED | 7 years |
+
+---
+
+## 27.3 Data Classification for Business Rules
+
+| Business Rule | Data Classification | Audit Required |
+|---------------|---------------------|----------------|
+| Company Management | Internal | Yes |
+| Product Creation | Internal | Yes |
+| Product Configuration | Confidential | Yes |
+| Product Publish | Confidential | Yes |
+| Product Archive | Confidential | Yes |
+| Version Creation | Confidential | Yes |
+
+---
+
+## 27.4 Compliance Checklist
+
+### Business Rule Compliance Checklist
+
+- [ ] All business rules implemented in Domain Layer
+- [ ] Audit trail generated for all state changes
+- [ ] Business rule validation tested
+- [ ] Database constraints enforce business rules
+- [ ] Transaction boundaries ensure atomicity
+- [ ] Exception handling provides clear error messages
+- [ ] Business rule IDs traceable to BRD/FSD
+- [ ] Unit tests cover all business rules
+- [ ] Integration tests verify business rule enforcement
+- [ ] ArchUnit tests enforce layered architecture
+
+Lihat [Compliance Reference Guide](COMPLIANCE_REFERENCE.md) untuk detail implementasi.
+
+---
+
 # 27. Requires Functional Clarification
 
 Item berikut tidak dapat diturunkan langsung dari BRD/FSD.

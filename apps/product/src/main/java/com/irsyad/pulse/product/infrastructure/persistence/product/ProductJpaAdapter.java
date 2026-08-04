@@ -33,7 +33,7 @@ public class ProductJpaAdapter implements ProductRepositoryPort {
 
     @Override
     public Optional<Product> findById(UUID productId) {
-        return this.productJpaRepository.findByProductIdAndDeletedFalse(productId)
+        return this.productJpaRepository.findByIdAndDeletedFalse(productId)
                 .map(this::toDomain);
     }
 
@@ -47,20 +47,20 @@ public class ProductJpaAdapter implements ProductRepositoryPort {
     public List<Product> search(UUID companyId, String productCode, String productName, String category,
                                 ProductStatus status, LocalDate effectiveDate, int page, int size) {
         Pageable pageable = PageRequest.of(page, size);
-        return this.productJpaRepository.findAll(pageable).stream()
-                .filter(entity -> !entity.isDeleted())
+        return this.productJpaRepository.search(companyId, productCode, productName, category,
+                        status, effectiveDate, pageable).stream()
                 .map(this::toDomain)
                 .toList();
     }
 
     private ProductJpaEntity toEntity(Product product) {
         return ProductJpaEntity.builder()
-                .productId(product.getProductId())
+                .id(product.getProductId())
                 .companyId(product.getCompanyId())
                 .productCode(product.getProductCode())
                 .productName(product.getProductName())
                 .category(product.getCategory())
-                .version(product.getVersion())
+                .currentVersion(product.getVersion())
                 .status(product.getStatus() != null ? product.getStatus() : ProductStatus.DRAFT)
                 .effectiveDate(product.getEffectiveDate())
                 .expiryDate(product.getExpiryDate())
@@ -68,19 +68,19 @@ public class ProductJpaAdapter implements ProductRepositoryPort {
                 .createdBy(product.getCreatedBy())
                 .updatedAt(product.getUpdatedAt())
                 .updatedBy(product.getUpdatedBy())
-                .optimisticLockVersion(product.getOptimisticLockVersion())
+                .version(product.getOptimisticLockVersion())
                 .deleted(product.isDeleted())
                 .build();
     }
 
     private Product toDomain(ProductJpaEntity entity) {
         return Product.builder()
-                .productId(entity.getProductId())
+                .productId(entity.getId())
                 .companyId(entity.getCompanyId())
                 .productCode(entity.getProductCode())
                 .productName(entity.getProductName())
                 .category(entity.getCategory())
-                .version(entity.getVersion())
+                .version(entity.getCurrentVersion())
                 .status(entity.getStatus())
                 .effectiveDate(entity.getEffectiveDate())
                 .expiryDate(entity.getExpiryDate())
@@ -88,7 +88,7 @@ public class ProductJpaAdapter implements ProductRepositoryPort {
                 .createdBy(entity.getCreatedBy())
                 .updatedAt(entity.getUpdatedAt())
                 .updatedBy(entity.getUpdatedBy())
-                .optimisticLockVersion(entity.getOptimisticLockVersion())
+                .optimisticLockVersion(entity.getVersion())
                 .deleted(entity.isDeleted())
                 .build();
     }

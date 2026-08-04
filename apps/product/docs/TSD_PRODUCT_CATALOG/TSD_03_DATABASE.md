@@ -879,6 +879,126 @@ Implementasi partition tidak memengaruhi domain maupun API.
 
 ---
 
+# 30. Compliance & Data Security
+
+## 30.1 Regulatory Compliance
+
+Database design memenuhi persyaratan compliance:
+
+* **UU PDP No. 27/2022** - Perlindungan Data Pribadi
+  * Encryption at rest (AES-256)
+  * Audit trail (7 years retention)
+  * Data retention policy
+
+* **POJK No. 13/2017** - Penggunaan TI
+  * Immutable audit trail
+  * Backup & recovery
+  * Business continuity
+
+* **ISO/IEC 27001:2022** - ISMS
+  * Access control
+  * Cryptography
+  * Operations security
+
+Lihat [Enterprise Standards & Compliance Framework](../../../docs/16. ENTERPRISE_STANDARDS.md) untuk detail lengkap.
+
+---
+
+## 30.2 Data Classification
+
+| Data Type | Classification | Database Protection |
+|-----------|---------------|---------------------|
+| Insurance Company | Internal | Access control, audit |
+| Product | Internal | Access control, audit, versioning |
+| Product Configuration | Confidential | Encryption, RBAC, audit |
+| Audit History | Restricted | Append-only, encryption, 7-year retention |
+
+---
+
+## 30.3 Encryption Strategy
+
+### Data at Rest
+
+* **PostgreSQL:** Disk-level encryption (AES-256)
+* **Audit Trail:** Sensitive fields encryption
+* **Key Management:** HSM/KMS untuk encryption keys
+
+### Data in Transit
+
+* **Application → Database:** TLS 1.2+
+* **Application → Redis:** TLS (jika diperlukan)
+* **Backup:** Encrypted backup storage
+
+---
+
+## 30.4 Audit Trail Implementation
+
+### Audit Table Design
+
+```sql
+CREATE TABLE catalog.audit_history (
+    id UUID PRIMARY KEY,
+    entity_type VARCHAR(50) NOT NULL,
+    entity_id UUID NOT NULL,
+    action VARCHAR(50) NOT NULL,
+    before_data JSONB,
+    after_data JSONB,
+    performed_by VARCHAR(100),
+    performed_at TIMESTAMP NOT NULL,
+    reason VARCHAR(500)
+);
+```
+
+### Audit Principles
+
+* **Append-only:** Tidak boleh diupdate atau dihapus
+* **Immutable:** Setelah insert, data tidak boleh berubah
+* **Complete:** Menangkap seluruh perubahan bisnis
+* **Retained:** 7 tahun minimal (UU PDP, OJK)
+
+---
+
+## 30.5 Data Retention Implementation
+
+### Retention Schedule
+
+| Table | Retention | Disposal |
+|-------|-----------|----------|
+| product_version | Permanent | Archive setelah 10 tahun |
+| audit_history | 7 years | Secure deletion |
+| insurance_company | Permanent | Soft delete |
+
+### Implementation
+
+* **Application Level:** Soft delete untuk semua entity
+* **Database Level:** Trigger untuk audit trail
+* **Platform Level:** Automated archival dan deletion
+
+---
+
+## 30.6 Backup & Recovery
+
+### Backup Strategy
+
+* **Full Backup:** Weekly
+* **Incremental Backup:** Daily
+* **WAL Archive:** Continuous
+
+### Recovery Objectives
+
+* **RPO:** ≤ 15 minutes
+* **RTO:** ≤ 1 hour
+
+### Compliance Requirements
+
+* Backup harus dienkripsi
+* Backup harus diuji secara berkala
+* Recovery procedure harus didokumentasikan
+
+Lihat [Compliance Reference Guide](COMPLIANCE_REFERENCE.md) untuk detail implementasi.
+
+---
+
 # 30. Next Document
 
 **TSD_04_API.md**

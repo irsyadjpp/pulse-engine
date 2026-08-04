@@ -642,6 +642,7 @@ CREATE TABLE catalog.product_version (
 | Version hilang | Transaction + Constraint |
 | Consumer membaca versi salah | Current Version pointer |
 | Storage bertambah | Monitoring kapasitas dan kebijakan retensi bila disetujui bisnis |
+| Compliance violation | Immutable version, audit trail, retention policy |
 
 ---
 
@@ -652,6 +653,86 @@ CREATE TABLE catalog.product_version (
 3. Tambahkan checksum/hash snapshot jika di masa depan diperlukan verifikasi integritas.
 4. Pisahkan Query Service untuk Product Version apabila volume histori meningkat.
 5. Audit dan Product Version harus selalu dibuat dalam transaction yang sama.
+
+---
+
+# 34. Compliance & Version Retention
+
+## 34.1 Regulatory Compliance
+
+Versioning strategy memenuhi persyaratan compliance:
+
+* **UU PDP No. 27/2022** - Perlindungan Data Pribadi
+  * Data retention policy (10 years untuk product version)
+  * Immutable historical records
+  * Audit trail untuk perubahan
+
+* **POJK No. 13/2017** - Penggunaan TI
+  * Immutable audit trail
+  * Business continuity
+  * Historical data preservation
+
+* **POJK No. 69/2016** - Perusahaan Asuransi
+  * Product versioning untuk policy management
+  * Historical product data retention
+
+Lihat [Enterprise Standards & Compliance Framework](../../../docs/16. ENTERPRISE_STANDARDS.md) untuk detail lengkap.
+
+---
+
+## 34.2 Data Retention for Versions
+
+| Data Type | Retention Period | Legal Basis | Disposal Method |
+|-----------|-----------------|-------------|-----------------|
+| Product Version | 10 years | OJK regulation | Archive then secure deletion |
+| Product Snapshot | 10 years | OJK regulation | Archive then secure deletion |
+| Version Metadata | Permanent | Business requirement | Archive |
+
+### Retention Implementation
+
+* **Application Level:** ProductVersion tidak boleh dihapus oleh aplikasi
+* **Database Level:** Soft delete dengan flag deleted
+* **Platform Level:** Automated archival setelah retention period
+* **Compliance Level:** Audit trail untuk semua version access
+
+---
+
+## 34.3 Audit Trail for Versioning
+
+Setiap version creation harus menghasilkan audit event:
+
+| Event | Description | Retention |
+|-------|-------------|-----------|
+| VERSION_CREATED | Product version dibuat | 10 years |
+| VERSION_ACCESSED | Product version diakses | 7 years |
+| VERSION_COMPARED | Product version dibandingkan | 7 years |
+
+### Audit Information
+
+* Who created the version
+* When the version was created
+* What changes were made
+* Why the version was created (reason)
+* Product snapshot (before/after)
+
+---
+
+## 34.4 Compliance Checklist
+
+### Versioning Compliance Checklist
+
+- [ ] Product versions immutable (no update/delete)
+- [ ] Version retention policy configured (10 years)
+- [ ] Audit trail for version creation
+- [ ] Audit trail for version access
+- [ ] Snapshot integrity verified (checksum)
+- [ ] Current version pointer maintained
+- [ ] Historical versions accessible
+- [ ] Version comparison logged
+- [ ] Archive strategy defined
+- [ ] Secure deletion after retention period
+
+Lihat [Compliance Reference Guide](COMPLIANCE_REFERENCE.md) untuk detail implementasi.
 
 ---
 

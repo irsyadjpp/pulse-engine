@@ -33,7 +33,6 @@ public class Company {
     private long version;
     private boolean deleted;
 
-    @Builder.Default
     private final List<DomainEvent> domainEvents = new ArrayList<>();
 
     public void updateProfile(String companyName, String logoUrl, String contactInformation) {

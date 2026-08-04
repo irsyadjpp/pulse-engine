@@ -147,12 +147,19 @@ Business Rule BR-009.
 
 ## Data Model
 
-| Field            | Type    |
-| ---------------- | ------- |
-| coverageId       | UUID    |
-| productVersionId | UUID    |
-| coverageAmount   | DECIMAL |
-| currency         | VARCHAR |
+| Field            | Type      | Description |
+| ---------------- | --------- | ----------- |
+| coverageId       | UUID      | Primary Key |
+| productVersionId | UUID      | Foreign Key to Product Version |
+| coverageAmount   | DECIMAL   | Coverage amount in minor currency unit (e.g., IDR) |
+| currency         | VARCHAR(3) | ISO 4217 currency code (e.g., IDR, USD) |
+
+**Business Decision BD-06**: Coverage Amount menggunakan DECIMAL tanpa presisi tetap. Presisi dan scale ditentukan oleh implementasi database dengan pertimbangan:
+- Coverage Amount untuk produk asuransi Personal Accident umumnya menggunakan IDR (Rupiah Indonesia)
+- Maksimum coverage amount ditentukan oleh underwriting guidelines, bukan oleh Product Catalog
+- Format ISO 4217 (3 karakter) digunakan untuk currency code
+
+**Note**: Product Catalog hanya menyimpan metadata coverage. Perhitungan premi dan eligibility dilakukan oleh service lain (Premium Engine, Eligibility Engine).
 
 ---
 
@@ -505,6 +512,7 @@ Selama penyusunan FSD dilakukan beberapa keputusan desain untuk menghilangkan am
 | BD-03 | Product Document **tidak menjadi prasyarat** Publish Product                                                                   | Approved |
 | BD-04 | Tidak ada batas maksimum jumlah Coverage, Benefit, Exclusion, Premium Configuration, maupun Product Document pada level aplikasi | Approved |
 | BD-05 | Seluruh Product Configuration menggunakan **Soft Delete** sesuai standar NFR Product Catalog                                   | Approved |
+| BD-06 | Coverage Amount menggunakan DECIMAL dengan currency code ISO 4217 (3 karakter). Product Catalog hanya menyimpan metadata, perhitungan premi dilakukan oleh Premium Engine | Approved |
 
 ## 15.1 Snapshot per Product Version
 

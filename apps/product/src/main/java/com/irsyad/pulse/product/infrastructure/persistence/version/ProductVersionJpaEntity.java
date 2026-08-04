@@ -9,15 +9,16 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
-import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
 
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.UUID;
+
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 /**
  * JPA entity mapping the product_version table (Appendix O).
@@ -26,15 +27,16 @@ import java.util.UUID;
 @Entity
 @Table(name = "product_version")
 @Getter
+@Setter
 @Builder
-@NoArgsConstructor(access = AccessLevel.PROTECTED)
+@NoArgsConstructor
 @AllArgsConstructor
 public class ProductVersionJpaEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
-    @Column(name = "product_version_id", nullable = false, updatable = false)
-    private UUID productVersionId;
+    @Column(name = "id", nullable = false, updatable = false)
+    private UUID id;
 
     @Column(name = "product_id", nullable = false, updatable = false)
     private UUID productId;
@@ -49,12 +51,27 @@ public class ProductVersionJpaEntity {
     @Column(name = "effective_date")
     private LocalDate effectiveDate;
 
-    @Column(name = "published_date")
-    private Instant publishedDate;
+    @Column(name = "published_at")
+    private Instant publishedAt;
+
+    @Column(name = "snapshot", columnDefinition = "JSONB")
+    private String snapshot;
+
+    @Column(name = "published_by", length = 100)
+    private String publishedBy;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
     @Column(name = "created_by", nullable = false, length = 100)
     private String createdBy;
+
+    @Column(name = "updated_at", nullable = false)
+    private Instant updatedAt;
+
+    @Column(name = "updated_by", nullable = false, length = 100)
+    private String updatedBy;
+
+    @Column(name = "deleted", nullable = false)
+    private boolean deleted;
 }

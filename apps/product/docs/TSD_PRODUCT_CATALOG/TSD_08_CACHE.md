@@ -888,6 +888,98 @@ Artinya:
 
 ---
 
+# 33. Compliance & Data Security
+
+## 33.1 Regulatory Compliance
+
+Cache design memenuhi persyaratan compliance:
+
+* **UU PDP No. 27/2022** - Perlindungan Data Pribadi
+  * Data encryption in transit (TLS)
+  * Data minimization (hanya metadata, tidak PII)
+  * Audit trail untuk cache operations
+
+* **POJK No. 13/2017** - Penggunaan TI
+  * Data security
+  * Access control
+  * Monitoring
+
+* **ISO/IEC 27001:2022** - ISMS
+  * A.9 Access Control
+  * A.10 Cryptography
+  * A.12 Operations Security
+
+Lihat [Enterprise Standards & Compliance Framework](../../../docs/16. ENTERPRISE_STANDARDS.md) untuk detail lengkap.
+
+---
+
+## 33.2 Data Classification in Cache
+
+| Data Type | Classification | Cache Protection |
+|-----------|---------------|------------------|
+| Product Metadata | Internal | RBAC, HTTPS, audit trail |
+| Product Configuration | Confidential | Encryption, RBAC, TTL |
+| Company Information | Internal | RBAC, HTTPS |
+| Search Results | Internal | RBAC, TTL |
+
+---
+
+## 33.3 Cache Security Controls
+
+### Data Protection
+
+* **Encryption in Transit:** TLS untuk komunikasi dengan Redis
+* **Encryption at Rest:** Redis persistence encryption (platform managed)
+* **Access Control:** Network isolation, Redis AUTH
+* **No Sensitive Data:** Cache hanya menyimpan metadata, bukan PII
+
+### Monitoring
+
+* Cache hit/miss ratio
+* Cache eviction events
+* Redis memory usage
+* Redis latency
+* Security events: unauthorized access attempts
+
+---
+
+## 33.4 Data Retention in Cache
+
+| Data | TTL | Reason |
+|------|-----|--------|
+| Product Detail | 30 minutes | Stale data prevention |
+| Product Search | 10 minutes | Frequent updates |
+| Company Detail | 30 minutes | Rarely changed |
+| Product Version | 24 hours | Immutable data |
+| Version History | 60 minutes | Rarely accessed |
+
+### Retention Implementation
+
+* **Application Level:** TTL configuration
+* **Redis Level:** Automatic expiration
+* **Platform Level:** Memory management with LRU eviction
+
+---
+
+## 33.5 Compliance Checklist
+
+### Cache Security Checklist
+
+- [ ] Redis authentication enabled
+- [ ] TLS enabled for Redis communication
+- [ ] Network isolation implemented
+- [ ] No sensitive data cached
+- [ ] Cache encryption at rest enabled
+- [ ] Access logging enabled
+- [ ] Cache eviction policy configured
+- [ ] TTL set for all cached data
+- [ ] Monitoring and alerting configured
+- [ ] Cache penetration protection implemented
+
+Lihat [Compliance Reference Guide](COMPLIANCE_REFERENCE.md) untuk detail implementasi.
+
+---
+
 # 33. Traceability
 
 | BRD | FSD | Cache | API | Test Case |

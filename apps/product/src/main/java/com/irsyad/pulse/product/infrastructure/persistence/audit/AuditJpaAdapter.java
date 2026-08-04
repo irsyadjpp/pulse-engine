@@ -29,7 +29,7 @@ public class AuditJpaAdapter implements AuditPort {
 
     @Override
     public List<AuditHistory> findByEntityId(UUID entityId) {
-        return this.auditJpaRepository.findByEntityIdOrderByCreatedAtDesc(entityId).stream()
+        return this.auditJpaRepository.findByEntityIdOrderByPerformedAtDesc(entityId).stream()
                 .map(this::toDomain)
                 .toList();
     }
@@ -41,8 +41,8 @@ public class AuditJpaAdapter implements AuditPort {
 
     private AuditJpaEntity toEntity(AuditHistory audit) {
         return AuditJpaEntity.builder()
-                .auditId(audit.getAuditId())
-                .entityName(audit.getEntityName())
+                .id(audit.getAuditId())
+                .entityType(audit.getEntityName())
                 .entityId(audit.getEntityId())
                 .action(audit.getAction())
                 .version(audit.getVersion())
@@ -50,15 +50,15 @@ public class AuditJpaAdapter implements AuditPort {
                 .afterData(audit.getAfterData())
                 .reason(audit.getReason())
                 .correlationId(audit.getCorrelationId())
-                .createdBy(audit.getCreatedBy())
-                .createdAt(audit.getCreatedAt())
+                .performedBy(audit.getCreatedBy())
+                .performedAt(audit.getCreatedAt())
                 .build();
     }
 
     private AuditHistory toDomain(AuditJpaEntity entity) {
         return AuditHistory.builder()
-                .auditId(entity.getAuditId())
-                .entityName(entity.getEntityName())
+                .auditId(entity.getId())
+                .entityName(entity.getEntityType())
                 .entityId(entity.getEntityId())
                 .action(entity.getAction())
                 .version(entity.getVersion())
@@ -66,8 +66,8 @@ public class AuditJpaAdapter implements AuditPort {
                 .afterData(entity.getAfterData())
                 .reason(entity.getReason())
                 .correlationId(entity.getCorrelationId())
-                .createdBy(entity.getCreatedBy())
-                .createdAt(entity.getCreatedAt())
+                .createdBy(entity.getPerformedBy())
+                .createdAt(entity.getPerformedAt())
                 .build();
     }
 }

@@ -354,6 +354,16 @@ PUT /api/v1/companies/{companyId}
 
 ---
 
+## Publish Company
+
+```
+POST /api/v1/companies/{companyId}/publish
+```
+
+**Business Decision BD-06**: Endpoint ini disediakan untuk konsistensi API meskipun BRD tidak secara eksplisit meminta operasi "Publish Company". Publish Company memvalidasi bahwa perusahaan aktif dan memiliki semua informasi yang diperlukan untuk mendaftarkan produk.
+
+---
+
 ## Activate
 
 ```
@@ -522,9 +532,10 @@ Selama penyusunan FSD dilakukan beberapa keputusan desain untuk menghilangkan am
 | BD-03 | Company tidak dapat dinonaktifkan apabila masih memiliki Product berstatus **Published**                                       | Approved |
 | BD-04 | Logo Company bersifat **opsional** dan tidak mempengaruhi proses bisnis                                                        | Approved |
 | BD-05 | Contact Information berada di **luar ruang lingkup** Product Catalog dan memerlukan requirement terpisah apabila diimplementasikan | Approved |
+| BD-06 | Endpoint Publish Company disediakan untuk konsistensi API meskipun BRD tidak secara eksplisit meminta operasi tersebut           | Approved |
 
 ## Catatan Arsitektur
 
-Dari kelima item tersebut, **hanya BD-05 yang benar-benar tidak dapat disimpulkan dari BRD**. Empat item lainnya adalah keputusan desain yang diperlukan agar implementasi dapat berjalan dan **tidak menambah ruang lingkup bisnis**.
+Dari keenam item tersebut, **hanya BD-05 dan BD-06 yang benar-benar tidak dapat disimpulkan dari BRD**. Empat item lainnya adalah keputusan desain yang diperlukan agar implementasi dapat berjalan dan **tidak menambah ruang lingkup bisnis**.
 
 Dengan mengganti istilah **"Open Items / Business Clarification"** menjadi **"Business Decisions"**, FSD menjadi baseline yang siap diimplementasikan oleh tim engineering tanpa menyisakan pertanyaan terbuka.

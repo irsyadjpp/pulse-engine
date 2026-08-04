@@ -965,7 +965,102 @@ Semua endpoint menggunakan struktur error berikut.
 
 ---
 
-# 44. Next Document
+# 44. Compliance & Security
+
+## 44.1 Regulatory Compliance
+
+Error handling memenuhi persyaratan compliance:
+
+* **UU PDP No. 27/2022** - Perlindungan Data Pribadi
+  * No sensitive data exposure di error messages
+  * Audit trail untuk error events
+  * Secure error handling
+
+* **POJK No. 13/2017** - Penggunaan TI
+  * Incident tracking through error logs
+  * Security incident reporting
+  * Error monitoring
+
+* **ISO/IEC 27001:2022** - ISMS
+  * A.16 Incident Management - Error tracking dan response
+  * A.12 Operations Security - Secure error handling
+
+Lihat [Enterprise Standards & Compliance Framework](../../../docs/16. ENTERPRISE_STANDARDS.md) untuk detail lengkap.
+
+---
+
+## 44.2 Security Considerations
+
+### Information Disclosure Prevention
+
+Error response **tidak boleh** mengandung:
+
+* Stack trace
+* SQL query
+* Internal file paths
+* Database connection strings
+* Framework versions
+* Internal IP addresses
+* JWT tokens
+* Passwords atau credentials
+
+### Error Classification for Security
+
+| Error Type | Security Impact | Logging Level | Action |
+|------------|----------------|---------------|--------|
+| Authentication Failure | Medium | WARN | Alert after 5 attempts |
+| Authorization Failure | High | WARN | Alert immediately |
+| Invalid JWT | Medium | WARN | Alert after 3 attempts |
+| SQL Injection Attempt | Critical | ERROR | Alert + block |
+| Rate Limit Exceeded | Low | INFO | Log + throttle |
+
+---
+
+## 44.3 Audit Trail for Errors
+
+Setiap error harus dicatat dengan:
+
+| Field | Description | Example |
+|-------|-------------|---------|
+| Timestamp | Waktu error | `2026-08-04T10:30:00Z` |
+| Error Code | Business error code | `PRODUCT_NOT_FOUND` |
+| HTTP Status | HTTP status code | `404` |
+| Endpoint | API endpoint | `/api/v1/products/{id}` |
+| User ID | Actor (jika authenticated) | `user-123` |
+| Correlation ID | Request correlation | `corr-456` |
+| Trace ID | Distributed trace | `trace-789` |
+| Message | User-friendly message | `Product not found` |
+| Stack Trace | Internal only (not in response) | Logged to ELK/Splunk |
+
+### Error Retention
+
+* **Application Logs:** 30 days
+* **Error Logs:** 90 days
+* **Security Error Logs:** 1 year (authentication/authorization failures)
+* **Audit Logs:** 7 years (regulatory requirement)
+
+---
+
+## 44.4 Compliance Checklist
+
+### Error Handling Security Checklist
+
+- [ ] Error messages sanitized (no sensitive data)
+- [ ] Stack traces not exposed to consumers
+- [ ] Internal errors logged with full context
+- [ ] Correlation ID in all error responses
+- [ ] Trace ID for distributed tracing
+- [ ] Security errors logged separately
+- [ ] Error monitoring and alerting configured
+- [ ] Error rate tracking enabled
+- [ ] Incident response procedure documented
+- [ ] Error taxonomy defined and documented
+
+Lihat [Compliance Reference Guide](COMPLIANCE_REFERENCE.md) untuk detail implementasi.
+
+---
+
+# 45. Next Document
 
 **TSD_11_LOGGING.md**
 

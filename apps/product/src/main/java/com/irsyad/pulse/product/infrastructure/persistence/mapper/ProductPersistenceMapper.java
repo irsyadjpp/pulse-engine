@@ -13,12 +13,12 @@ public class ProductPersistenceMapper {
 
     public ProductJpaEntity toEntity(Product product) {
         return ProductJpaEntity.builder()
-                .productId(product.getProductId())
+                .id(product.getProductId())
                 .companyId(product.getCompanyId())
                 .productCode(product.getProductCode())
                 .productName(product.getProductName())
                 .category(product.getCategory())
-                .version(product.getVersion())
+                .currentVersion(product.getVersion())
                 .status(product.getStatus())
                 .effectiveDate(product.getEffectiveDate())
                 .expiryDate(product.getExpiryDate())
@@ -26,19 +26,19 @@ public class ProductPersistenceMapper {
                 .createdBy(product.getCreatedBy())
                 .updatedAt(product.getUpdatedAt())
                 .updatedBy(product.getUpdatedBy())
-                .optimisticLockVersion(product.getOptimisticLockVersion())
+                .version(product.getOptimisticLockVersion())
                 .deleted(product.isDeleted())
                 .build();
     }
 
     public Product toDomain(ProductJpaEntity entity) {
         return Product.builder()
-                .productId(entity.getProductId())
+                .productId(entity.getId())
                 .companyId(entity.getCompanyId())
                 .productCode(entity.getProductCode())
                 .productName(entity.getProductName())
                 .category(entity.getCategory())
-                .version(entity.getVersion())
+                .version(entity.getCurrentVersion())
                 .status(entity.getStatus())
                 .effectiveDate(entity.getEffectiveDate())
                 .expiryDate(entity.getExpiryDate())
@@ -46,7 +46,7 @@ public class ProductPersistenceMapper {
                 .createdBy(entity.getCreatedBy())
                 .updatedAt(entity.getUpdatedAt())
                 .updatedBy(entity.getUpdatedBy())
-                .optimisticLockVersion(entity.getOptimisticLockVersion())
+                .optimisticLockVersion(entity.getVersion())
                 .deleted(entity.isDeleted())
                 .build();
     }

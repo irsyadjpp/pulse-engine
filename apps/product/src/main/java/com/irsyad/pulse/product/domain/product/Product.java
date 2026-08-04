@@ -8,6 +8,7 @@ import com.irsyad.pulse.product.domain.product.exclusion.Exclusion;
 import com.irsyad.pulse.product.domain.product.premium.PremiumConfiguration;
 import com.irsyad.pulse.product.domain.shared.DomainEvent;
 import com.irsyad.pulse.product.domain.shared.ProductStatus;
+
 import lombok.Builder;
 import lombok.Getter;
 
@@ -45,19 +46,13 @@ public class Product {
     private long optimisticLockVersion;
     private boolean deleted;
 
-    @Builder.Default
     private final List<Coverage> coverages = new ArrayList<>();
-    @Builder.Default
     private final List<Benefit> benefits = new ArrayList<>();
-    @Builder.Default
     private final List<Exclusion> exclusions = new ArrayList<>();
     private Eligibility eligibility;
-    @Builder.Default
     private final List<PremiumConfiguration> premiumConfigurations = new ArrayList<>();
-    @Builder.Default
     private final List<ProductDocument> documents = new ArrayList<>();
 
-    @Builder.Default
     private final List<DomainEvent> domainEvents = new ArrayList<>();
 
     /**

@@ -905,7 +905,179 @@ Mendukung forensic analysis dan security investigation.
 
 ---
 
-# 41. Next Document
+# 41. Compliance & Audit Logging
+
+## 41.1 Regulatory Compliance
+
+Logging design memenuhi persyaratan compliance:
+
+* **UU PDP No. 27/2022** - Perlindungan Data Pribadi
+  * Audit trail untuk seluruh akses dan perubahan data
+  * Data retention policy (7 years untuk logs)
+  * Immutable audit logs
+  * No sensitive data di logs
+
+* **POJK No. 13/2017** - Penggunaan TI
+  * Comprehensive logging strategy
+  * Security monitoring
+  * Incident investigation
+  * Business continuity
+
+* **ISO/IEC 27001:2022** - ISMS
+  * A.12 Operations Security - Logging and monitoring
+  * A.16 Incident Management - Security incident logging
+  * A.12.4 Logging and monitoring - Protection of logs
+
+Lihat [Enterprise Standards & Compliance Framework](../../../docs/16. ENTERPRISE_STANDARDS.md) untuk detail lengkap.
+
+---
+
+## 41.2 Audit Logging Requirements
+
+### Events to be Logged
+
+| Event Category | Events | Retention | Compliance |
+|----------------|--------|-----------|------------|
+| **Authentication** | Login, Logout, Failed login | 1 year | ISO 27001 A.9 |
+| **Authorization** | Permission changes, Access denied | 1 year | ISO 27001 A.9 |
+| **Data Access** | Read, Write, Delete on Product data | 7 years | UU PDP, OJK |
+| **Business Transactions** | Product Created, Updated, Published, Archived | 10 years | OJK |
+| **Configuration Changes** | Coverage, Benefit, Eligibility, Premium changes | 7 years | OJK |
+| **System Events** | Deployments, Configuration changes | 7 years | ISO 27001 |
+| **Security Events** | Invalid JWT, SQL injection attempts | 1 year | ISO 27001 A.16 |
+
+---
+
+## 41.3 Log Format for Compliance
+
+Setiap audit log harus mencakup:
+
+```json
+{
+  "timestamp": "2026-08-04T10:30:00Z",
+  "level": "INFO",
+  "service": "product-catalog",
+  "eventType": "PRODUCT_PUBLISHED",
+  "actor": {
+    "userId": "user-123",
+    "serviceName": "admin-portal",
+    "ipAddress": "192.168.1.1"
+  },
+  "action": {
+    "operation": "UPDATE",
+    "resource": "Product",
+    "resourceId": "PROD-001",
+    "changes": {
+      "status": {
+        "oldValue": "DRAFT",
+        "newValue": "PUBLISHED"
+      }
+    }
+  },
+  "outcome": {
+    "status": "SUCCESS",
+    "message": "Product published successfully"
+  },
+  "context": {
+    "traceId": "trace-456",
+    "correlationId": "correlation-789",
+    "businessKey": "BK-001"
+  },
+  "compliance": {
+    "dataClassification": "CONFIDENTIAL",
+    "retentionPeriod": "10 years",
+    "regulatoryReference": ["POJK 13/2017", "UU PDP"]
+  }
+}
+```
+
+---
+
+## 41.4 Data Classification in Logging
+
+| Data Type | Classification | Logging Policy |
+|-----------|---------------|----------------|
+| Product Metadata | Internal | Logged |
+| Product Configuration | Confidential | Logged with masking |
+| Audit Trail | Restricted | Logged, encrypted |
+| JWT Token | Confidential | Masked |
+| Password | Restricted | Never logged |
+| API Key | Confidential | Masked |
+| Correlation ID | Internal | Logged |
+
+---
+
+## 41.5 Sensitive Data Masking
+
+### Data to be Masked
+
+| Data Type | Masking Rule | Example |
+|-----------|--------------|---------|
+| JWT Token | Show first 10 chars + *** | `eyJhbG...***` |
+| Authorization Header | Replace with *** | `Authorization: Bearer ***` |
+| Password | Never logged | N/A |
+| Database Password | Never logged | N/A |
+| API Key | Show first 4 chars + *** | `abcd***` |
+| Credit Card | Show last 4 digits | `****-****-****-1234` |
+| IP Address | Logged (for security) | `192.168.1.1` |
+
+---
+
+## 41.6 Log Retention Policy
+
+| Log Type | Retention Period | Storage | Disposal |
+|----------|------------------|---------|----------|
+| Application Log | 30 days | Hot storage | Automatic deletion |
+| Audit Log | 7 years | Warm storage | Secure deletion |
+| Security Log | 1 year | Hot storage | Secure deletion |
+| Access Log | 90 days | Hot storage | Automatic deletion |
+| Error Log | 90 days | Hot storage | Automatic deletion |
+
+### Retention Implementation
+
+* **Application Level:** Log rotation based on size and time
+* **Platform Level:** Centralized log management with retention policies
+* **Compliance Level:** Audit logs archived to secure storage
+
+---
+
+## 41.7 Log Security
+
+### Log Protection
+
+* **Integrity:** Append-only logs, hash chaining
+* **Confidentiality:** Encryption in transit and at rest
+* **Access Control:** Restricted access to audit logs
+* **Monitoring:** Log access monitoring and alerting
+
+### Log Storage
+
+* **Hot Storage:** Recent logs (30 days) - fast access
+* **Warm Storage:** Audit logs (7 years) - compressed, encrypted
+* **Cold Storage:** Archived logs - long-term retention
+
+---
+
+## 41.8 Compliance Checklist
+
+### Logging Compliance Checklist
+
+- [ ] Structured JSON logging implemented
+- [ ] Correlation ID in all log entries
+- [ ] Trace ID for distributed tracing
+- [ ] Audit trail for all business events
+- [ ] Sensitive data masked in logs
+- [ ] No stack traces in production logs (except ERROR)
+- [ ] Log retention policy configured
+- [ ] Log encryption at rest enabled
+- [ ] Log access control implemented
+- [ ] Security event logging configured
+- [ ] Log monitoring and alerting enabled
+- [ ] Log integrity verification (hash chaining)
+- [ ] Centralized log management integrated
+- [ ] Log backup and archival configured
+
+Lihat [Compliance Reference Guide](COMPLIANCE_REFERENCE.md) untuk detail implementasi.
 
 **TSD_12_OBSERVABILITY.md**
 

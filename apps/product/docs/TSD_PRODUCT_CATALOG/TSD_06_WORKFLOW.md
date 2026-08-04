@@ -826,6 +826,7 @@ Archive --> Audit
 | Duplicate Publish | Domain Validation |
 | Update Published Product | Business Rule Validation |
 | Long Transaction | Batasi transaction hanya pada Aggregate Product |
+| Compliance violation | Audit trail, encryption, RBAC |
 
 ---
 
@@ -836,6 +837,93 @@ Archive --> Audit
 3. Seluruh workflow harus menghasilkan Audit Trail untuk operasi yang mengubah data.
 4. Pisahkan Command dan Query Service apabila kebutuhan query berkembang (CQRS ringan).
 5. Tambahkan OpenTelemetry Span pada setiap tahapan workflow untuk observability.
+
+---
+
+# 30. Compliance & Audit Workflow
+
+## 30.1 Regulatory Compliance
+
+Workflow design memenuhi persyaratan compliance:
+
+* **UU PDP No. 27/2022** - Perlindungan Data Pribadi
+  * Audit trail untuk seluruh operasi data
+  * Data retention policy
+  * Immutable audit logs
+
+* **POJK No. 13/2017** - Penggunaan TI
+  * Transaction atomicity
+  * Audit trail untuk seluruh perubahan
+  * Business continuity
+
+* **ISO/IEC 27001:2022** - ISMS
+  * A.12 Operations Security - Logging and monitoring
+  * A.14 System Acquisition - Secure development
+  * A.16 Incident Management - Audit trail untuk investigasi
+
+Lihat [Enterprise Standards & Compliance Framework](../../../docs/16. ENTERPRISE_STANDARDS.md) untuk detail lengkap.
+
+---
+
+## 30.2 Audit Workflow
+
+Setiap operasi yang mengubah data harus melalui audit workflow:
+
+```mermaid
+sequenceDiagram
+    actor User
+    participant Application
+    participant Domain
+    participant Repository
+    participant AuditRepository
+    User->>Application: Update Product
+    Application->>Domain: Execute Business Rule
+    Domain-->>Application: Success
+    Application->>Repository: Save Product
+    Repository-->>Application: Saved
+    Application->>AuditRepository: Insert Audit Event
+    AuditRepository-->>Application: Audit Saved
+    Application-->>User: HTTP 200
+```
+
+### Audit Principles
+
+* **Atomicity:** Audit harus dibuat dalam transaction yang sama dengan data change
+* **Immutability:** Audit record tidak boleh diubah atau dihapus
+* **Completeness:** Semua perubahan harus tercatat
+* **Retention:** 7-10 years sesuai regulasi
+
+---
+
+## 30.3 Data Retention in Workflow
+
+| Operation | Data Retention | Reason |
+|-----------|---------------|--------|
+| Product Created | 10 years | OJK regulation |
+| Product Updated | 10 years | OJK regulation |
+| Product Published | Permanent | Historical reference |
+| Product Archived | Permanent | Audit trail |
+| Configuration Changed | 7 years | OJK regulation |
+| Audit Event | 7 years | UU PDP, OJK |
+
+---
+
+## 30.4 Compliance Checklist
+
+### Workflow Compliance Checklist
+
+- [ ] All write operations generate audit events
+- [ ] Audit events created in same transaction as data changes
+- [ ] Audit trail is immutable (no update/delete)
+- [ ] Transaction boundaries ensure atomicity
+- [ ] Rollback occurs if audit creation fails
+- [ ] Correlation ID propagated through workflow
+- [ ] Business events logged with sufficient detail
+- [ ] Error handling preserves audit trail
+- [ ] Workflow diagrams maintained and updated
+- [ ] OpenTelemetry spans for observability
+
+Lihat [Compliance Reference Guide](COMPLIANCE_REFERENCE.md) untuk detail implementasi.
 
 ---
 

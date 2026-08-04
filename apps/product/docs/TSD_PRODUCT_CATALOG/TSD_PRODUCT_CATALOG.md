@@ -90,6 +90,8 @@ Dokumen ini **tidak** mencakup implementasi berikut karena berada di luar ruang 
 | FSD | Functional Specification Document |
 | ADR | Architecture Decision Records |
 | Coding Standard | Organization Technical Standard |
+| Enterprise Standards | Enterprise Standards & Compliance Framework |
+| Compliance Matrix | Compliance Implementation Matrix |
 
 Prioritas referensi adalah:
 
@@ -103,6 +105,10 @@ FSD
 ↓
 
 ADR
+
+↓
+
+Enterprise Standards
 
 ↓
 
@@ -376,6 +382,151 @@ Requires Functional Clarification
 | Unauthorized Access | OAuth2 + JWT |
 | Database Failure | PostgreSQL HA |
 | High Read Traffic | Redis Cache |
+| Compliance Violation | Audit Trail, Encryption, RBAC (see Section 7 below) |
+
+---
+
+# 17. Compliance & Security Architecture
+
+Product Catalog Service harus memenuhi persyaratan compliance enterprise yang berlaku. Dokumen ini merujuk ke:
+
+* [Enterprise Standards & Compliance Framework](../../../docs/16. ENTERPRISE_STANDARDS.md)
+* [Compliance Implementation Matrix](../../../docs/18. COMPLIANCE_MATRIX.md)
+* [Compliance Reference Guide](COMPLIANCE_REFERENCE.md)
+
+## 17.1 Regulatory Compliance
+
+### Indonesian Regulations
+
+* **UU PDP No. 27/2022** - Perlindungan Data Pribadi
+  * Data encryption at rest dan in transit (AES-256, TLS 1.3)
+  * Audit trail untuk seluruh akses data (7 years retention)
+  * Data retention policy (10 years untuk product version)
+  * Consent management (jika applicable)
+
+* **POJK No. 13/2017** - Penggunaan TI
+  * Immutable audit trail untuk seluruh transaksi
+  * IT risk management
+  * Business continuity plan (RTO: 2h, RPO: 1h)
+  * Incident management
+
+* **POJK No. 69/2016** - Perusahaan Asuransi
+  * Data security untuk informasi produk
+  * Policy management standards
+
+### International Standards
+
+* **ISO/IEC 27001:2022** - ISMS
+  * Access control (A.9)
+  * Cryptography (A.10)
+  * Operations security (A.12)
+  * Incident management (A.16)
+  * Business continuity (A.17)
+
+* **ISO/IEC 22301:2019** - BCMS
+  * Business impact analysis
+  * RTO/RPO definition
+  * Disaster recovery procedures
+
+* **ISO 31000:2018** - Risk Management
+  * Risk assessment
+  * Risk treatment
+  * Monitoring & review
+
+## 17.2 Data Classification
+
+| Data Type | Classification | Protection Requirements |
+|-----------|---------------|-------------------------|
+| Insurance Company Information | Internal | Access control, integrity checks |
+| Product Information | Internal | Access control, integrity checks, backup |
+| Product Configuration | Confidential | Encryption, RBAC, audit trail |
+| Eligibility Configuration | Confidential | Encryption, RBAC, audit trail |
+| Premium Configuration | Confidential | Encryption, RBAC, audit trail |
+| Audit Trail | Restricted | End-to-end encryption, immutable storage |
+| Product Version History | Confidential | Encryption, access control, backup |
+
+## 17.3 Security Controls
+
+### Preventive Controls
+
+* Input validation (API Gateway + service level)
+* SQL injection prevention (parameterized queries, JPA)
+* XSS prevention (output encoding, CSP headers)
+* CSRF prevention
+* Rate limiting (API Gateway)
+* OAuth 2.0 / JWT authentication
+* RBAC authorization (principle of least privilege)
+* Encryption: TLS 1.3 (transit), AES-256 (rest)
+
+### Detective Controls
+
+* Comprehensive audit logging
+* Security monitoring (SIEM integration)
+* Anomaly detection
+* Real-time log analysis
+
+### Corrective Controls
+
+* Incident response procedures
+* Regular backup with verified restore
+* Patch management
+* Automated access revocation
+
+## 17.4 Audit Trail Requirements
+
+### Events to be Logged
+
+| Event Category | Events | Retention |
+|----------------|--------|-----------|
+| Authentication | Login, Logout, Failed login | 7 years |
+| Authorization | Permission changes, Role assignments | 7 years |
+| Data Access | Read, Write, Delete on Product data | 10 years |
+| Business Transactions | Product Created, Updated, Published, Archived | 10 years |
+| Configuration Changes | Coverage, Benefit, Exclusion, Eligibility, Premium changes | 7 years |
+| System Events | Deployments, Configuration changes | 7 years |
+
+### Audit Log Format
+
+Setiap audit log harus mencakup:
+* Timestamp dengan timezone
+* Event ID (UUID)
+* Event type dan severity
+* Actor (user ID, service name, IP address)
+* Action (operation, resource, resource ID)
+* Outcome (status, message)
+* Context (trace ID, correlation ID, business key)
+* Compliance metadata (data classification, retention period, regulatory reference)
+
+## 17.5 Data Protection
+
+### Encryption Standards
+
+* **Data at Rest:** AES-256 untuk database, HSM/KMS untuk key management
+* **Data in Transit:** TLS 1.3 untuk external communication, mTLS untuk internal communication
+* **Database Connection:** TLS 1.2 atau higher
+
+### Data Retention
+
+* Product Version History: 10 years (OJK regulation)
+* Audit Trail: 7 years (UU PDP, OJK)
+* Configuration History: 10 years (OJK regulation)
+* Automated archival dan secure deletion procedures
+
+## 17.6 Business Continuity
+
+* **Availability Target:** ≥ 99.9%
+* **RTO (Recovery Time Objective):** 2 hours
+* **RPO (Recovery Point Objective):** 1 hour
+* **Backup:** Daily automated backup dengan offsite storage
+* **Disaster Recovery:** Warm site dengan asynchronous replication
+
+## 17.7 ITIL 4 Alignment
+
+* **Service Strategy:** Service catalog dan SLA definition
+* **Service Design:** Architecture design dengan security by design
+* **Service Transition:** Change management dengan CAB approval
+* **Service Operation:** Event management, incident management, problem management
+* **Continual Improvement:** Metrics, KPIs, improvement initiatives
 
 ---
 
@@ -490,6 +641,44 @@ Contoh:
 - Disaster Recovery Objective (RTO/RPO).
 
 Implementasi terhadap area tersebut **tidak boleh diasumsikan** tanpa keputusan dari Business Owner atau Enterprise Architecture.
+
+---
+
+# 21. Compliance Documentation References
+
+## 21.1 Enterprise Documentation
+
+* [Enterprise Standards & Compliance Framework](../../../docs/16. ENTERPRISE_STANDARDS.md)
+* [Compliance Implementation Matrix](../../../docs/18. COMPLIANCE_MATRIX.md)
+* [Documentation Index](../../../docs/17. DOCUMENTATION_INDEX.md)
+
+## 21.2 Service Documentation
+
+* [Product Catalog BRD](../business_requirement_document.md)
+* [Product Catalog FSD](FSD_PRODUCT_CATALOG/FSD_PRODUCT_CATALOG.md)
+* [Compliance Reference Guide](COMPLIANCE_REFERENCE.md)
+
+## 21.3 Regulatory References
+
+1. UU No. 27 Tahun 2022 - Perlindungan Data Pribadi
+2. POJK No. 13/2017 - Penggunaan Teknologi Informasi dan Sistem Informasi
+3. POJK No. 69/2016 - Perusahaan Asuransi dan Reasuransi
+4. ISO/IEC 27001:2022 - Information Security Management System
+5. ISO/IEC 22301:2019 - Business Continuity Management System
+6. ISO 31000:2018 - Risk Management
+
+---
+
+# 22. Compliance Contacts
+
+| Role | Responsibility | Contact |
+|------|---------------|---------|
+| **CISO** | Security policy, incident response | security@example.com |
+| **DPO** | Data protection, privacy compliance | dpo@example.com |
+| **CRO** | Risk management, regulatory compliance | risk@example.com |
+| **CTO** | Technology governance, BCP | cto@example.com |
+| **Compliance Officer** | Regulatory reporting, audit coordination | compliance@example.com |
+| **Product Catalog Team** | Product Catalog compliance implementation | product-catalog@example.com |
 
 ---
 

@@ -1054,7 +1054,104 @@ Namun Product Catalog tidak bergantung pada ETag untuk concurrency control.
 
 ---
 
-# 30. Next Document
+# 30. Compliance & API Security
+
+## 30.1 Regulatory Compliance
+
+API Design memenuhi persyaratan compliance enterprise:
+
+* **UU PDP No. 27/2022** - Perlindungan Data Pribadi
+  * Authentication & authorization untuk seluruh endpoint
+  * Audit trail untuk seluruh akses data
+  * Data encryption in transit (TLS 1.3)
+  * Rate limiting untuk mencegah abuse
+
+* **POJK No. 13/2017** - Penggunaan TI
+  * Secure API communication
+  * Access control
+  * Audit logging
+
+* **ISO/IEC 27001:2022** - ISMS
+  * A.9 Access Control
+  * A.10 Cryptography
+  * A.12 Operations Security
+
+Lihat [Enterprise Standards & Compliance Framework](../../../docs/16. ENTERPRISE_STANDARDS.md) untuk detail lengkap.
+
+---
+
+## 30.2 API Security Controls
+
+### Authentication & Authorization
+
+* Semua endpoint memerlukan JWT authentication
+* RBAC authorization berdasarkan role
+* Resource-level authorization (contoh: MARKETPLACE hanya melihat Published Product)
+* Token validation: signature, expiration, issuer, audience
+
+### Transport Security
+
+* HTTPS ONLY (TLS 1.3)
+* HTTP tidak diperbolehkan
+* CORS configuration untuk allowed origins
+* Security headers (HSTS, CSP, X-Frame-Options, dll.)
+
+### Input Validation
+
+* Jakarta Validation untuk request DTO
+* SQL injection prevention (JPA parameterized queries)
+* XSS prevention (output encoding)
+* CSRF protection dinonaktifkan (stateless API)
+
+### Rate Limiting
+
+* Diterapkan pada API Gateway
+* Baseline: 300 req/menit (Back Office), 100 req/menit (External)
+* Response: HTTP 429 dengan Retry-After header
+
+### Audit Logging
+
+* Semua API request dicatat
+* Correlation ID pada seluruh request
+* Trace ID untuk distributed tracing
+* Security events: authentication failure, authorization failure, invalid JWT
+
+---
+
+## 30.3 Data Classification in API
+
+| Data Type | Classification | API Protection |
+|-----------|---------------|----------------|
+| Product Metadata | Internal | RBAC, audit trail |
+| Product Configuration | Confidential | RBAC, audit trail, HTTPS |
+| Audit Trail | Restricted | Restricted access, encrypted transport |
+| Error Response | Internal | No sensitive data exposure |
+
+---
+
+## 30.4 Compliance Checklist
+
+### API Security Checklist
+
+- [ ] Authentication configured (OAuth2 + JWT)
+- [ ] Authorization enforced (RBAC)
+- [ ] TLS 1.3 enabled
+- [ ] CORS configured
+- [ ] Input validation implemented
+- [ ] SQL injection prevention verified
+- [ ] XSS prevention implemented
+- [ ] Rate limiting configured
+- [ ] Security headers configured
+- [ ] Audit logging operational
+- [ ] Error messages sanitized (no stacktrace)
+- [ ] Correlation ID implemented
+- [ ] OpenAPI specification maintained
+
+Lihat [Compliance Reference Guide](COMPLIANCE_REFERENCE.md) untuk detail implementasi security controls.
+
+---
+
+# 31. Next Document
 
 **TSD_05_BUSINESS_RULE_IMPLEMENTATION.md**
 

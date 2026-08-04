@@ -33,7 +33,7 @@ public class CompanyJpaAdapter implements CompanyRepositoryPort {
 
     @Override
     public Optional<Company> findById(UUID companyId) {
-        return this.companyJpaRepository.findByCompanyIdAndDeletedFalse(companyId)
+        return this.companyJpaRepository.findByIdAndDeletedFalse(companyId)
                 .map(this::toDomain);
     }
 
@@ -54,7 +54,7 @@ public class CompanyJpaAdapter implements CompanyRepositoryPort {
 
     private CompanyJpaEntity toEntity(Company company) {
         return CompanyJpaEntity.builder()
-                .companyId(company.getCompanyId())
+                .id(company.getCompanyId())
                 .companyCode(company.getCompanyCode())
                 .companyName(company.getCompanyName())
                 .logoUrl(company.getLogoUrl())
@@ -71,7 +71,7 @@ public class CompanyJpaAdapter implements CompanyRepositoryPort {
 
     private Company toDomain(CompanyJpaEntity entity) {
         return Company.builder()
-                .companyId(entity.getCompanyId())
+                .companyId(entity.getId())
                 .companyCode(entity.getCompanyCode())
                 .companyName(entity.getCompanyName())
                 .logoUrl(entity.getLogoUrl())

@@ -1,10 +1,8 @@
 package com.irsyad.pulse.product.domain.product.eligibility;
 
+import java.util.UUID;
 import lombok.Builder;
 import lombok.Getter;
-
-import java.util.UUID;
-
 /**
  * Eligibility configuration (FSD_03 Section 8).
  * Child entity of the Product aggregate.
@@ -12,7 +10,6 @@ import java.util.UUID;
 @Getter
 @Builder
 public class Eligibility {
-
     private final UUID eligibilityId;
     private final UUID productVersionId;
     private Integer minimumAge;

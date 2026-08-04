@@ -844,6 +844,102 @@ Item berikut sebelumnya berstatus *Requires Functional Clarification* dan telah 
 
 ---
 
+# 28. Compliance & Data Governance
+
+## 28.1 Regulatory Compliance
+
+Domain Model dirancang untuk mendukung compliance dengan:
+
+* **UU PDP No. 27/2022** - Perlindungan Data Pribadi
+  * Audit trail immutable untuk seluruh perubahan
+  * Data retention policy (7-10 years)
+  * Data minimization
+
+* **POJK No. 13/2017** - Penggunaan TI
+  * Immutable audit trail
+  * Business continuity
+  * IT risk management
+
+* **ISO/IEC 27001:2022** - ISMS
+  * Access control melalui aggregate boundaries
+  * Data classification
+  * Cryptographic controls
+
+Lihat [Enterprise Standards & Compliance Framework](../../../docs/16. ENTERPRISE_STANDARDS.md) untuk detail lengkap.
+
+---
+
+## 28.2 Data Classification in Domain
+
+| Aggregate | Data Classification | Protection |
+|-----------|---------------------|------------|
+| InsuranceCompany | Internal | Access control, audit |
+| Product | Internal | Access control, audit, versioning |
+| ProductVersion | Confidential | Encryption, immutable storage |
+| AuditHistory | Restricted | Append-only, encryption, 7-year retention |
+| EligibilityConfiguration | Confidential | Encryption, RBAC |
+| PremiumConfiguration | Confidential | Encryption, RBAC |
+
+---
+
+## 28.3 Audit Trail Design
+
+Setiap Aggregate yang menghasilkan perubahan bisnis harus menghasilkan Audit Event.
+
+**Audit Principles:**
+* Append-only (tidak boleh diupdate atau dihapus)
+* Immutable
+* Retained untuk 7 tahun (minimal)
+* Berisi: who, what, when, where, why, how
+
+**Audit Event Structure:**
+```java
+public record AuditEvent(
+    UUID eventId,
+    String aggregateType,
+    UUID aggregateId,
+    String action,
+    Object beforeState,
+    Object afterState,
+    String performedBy,
+    Instant performedAt,
+    String reason
+) {}
+```
+
+---
+
+## 28.4 Data Retention in Domain
+
+Retention policy diimplementasikan melalui:
+
+1. **Immutable Aggregate:** ProductVersion tidak boleh dihapus
+2. **Soft Delete:** Semua entity menggunakan soft delete
+3. **Audit Trail:** Append-only dengan retention 7-10 tahun
+4. **Archive Strategy:** Platform responsible untuk archival
+
+**Retention Schedule:**
+* ProductVersion: Permanent (archive setelah 10 tahun)
+* AuditHistory: 7 tahun (UU PDP, OJK)
+* Configuration History: 10 tahun (OJK)
+
+---
+
+## 28.5 Privacy by Design
+
+Domain Model mengikuti privacy by design principles:
+
+* **Data Minimization:** Hanya simpan data yang diperlukan
+* **Purpose Limitation:** Data hanya digunakan untuk tujuan yang didefinisikan
+* **Accuracy:** Validasi data pada aggregate
+* **Storage Limitation:** Retention policy yang jelas
+* **Integrity & Confidentiality:** Encryption, access control
+* **Accountability:** Audit trail untuk seluruh perubahan
+
+Lihat [Compliance Reference Guide](COMPLIANCE_REFERENCE.md) untuk implementasi detail.
+
+---
+
 # 27a. Business Rules Tambahan
 
 Berdasarkan keputusan di atas, ditambahkan Business Rule berikut ke BRD/FSD/TSD.

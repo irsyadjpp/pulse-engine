@@ -1,7 +1,7 @@
 -- V2__company.sql
 -- TSD_03 Section 10: insurance_company table.
 CREATE TABLE catalog.insurance_company (
-    company_id          UUID PRIMARY KEY,
+    id                  UUID PRIMARY KEY,
     company_code        VARCHAR(50)  NOT NULL,
     company_name        VARCHAR(200) NOT NULL,
     logo_url            TEXT,

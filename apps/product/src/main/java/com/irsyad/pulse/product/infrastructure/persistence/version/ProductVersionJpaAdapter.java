@@ -42,12 +42,12 @@ public class ProductVersionJpaAdapter implements ProductVersionPort {
 
     private ProductVersionJpaEntity toEntity(ProductVersion version) {
         return ProductVersionJpaEntity.builder()
-                .productVersionId(version.getProductVersionId())
+                .id(version.getProductVersionId())
                 .productId(version.getProductId())
                 .version(version.getVersion())
                 .status(version.getStatus() != null ? version.getStatus() : ProductStatus.DRAFT)
                 .effectiveDate(version.getEffectiveDate())
-                .publishedDate(version.getPublishedDate())
+                .publishedAt(version.getPublishedDate())
                 .createdAt(version.getCreatedAt())
                 .createdBy(version.getCreatedBy())
                 .build();
@@ -55,12 +55,12 @@ public class ProductVersionJpaAdapter implements ProductVersionPort {
 
     private ProductVersion toDomain(ProductVersionJpaEntity entity) {
         return ProductVersion.builder()
-                .productVersionId(entity.getProductVersionId())
+                .productVersionId(entity.getId())
                 .productId(entity.getProductId())
                 .version(entity.getVersion())
                 .status(entity.getStatus())
                 .effectiveDate(entity.getEffectiveDate())
-                .publishedDate(entity.getPublishedDate())
+                .publishedDate(entity.getPublishedAt())
                 .createdAt(entity.getCreatedAt())
                 .createdBy(entity.getCreatedBy())
                 .build();

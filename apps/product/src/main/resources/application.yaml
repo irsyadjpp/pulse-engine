@@ -1,6 +1,10 @@
 spring:
   application:
     name: product
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/pulse}
+    username: ${DB_USERNAME:postgres}
+    password: ${DB_PASSWORD:postgres}
   mvc:
     problemdetails:
       enabled: true
@@ -11,8 +15,27 @@ spring:
     properties:
       hibernate:
         default_schema: catalog
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+  cache:
+    type: redis
   security:
     oauth2:
       resourceserver:
         jwt:
           secret: ${JWT_SECRET:pulse-engine-default-secret-change-me-in-production}
+data:
+  encryption:
+    key: ${DATA_ENCRYPTION_KEY:cHVsc2UtZW5naW5lLWRlZmF1bHQta2V5LWZvci1kZXYtb25seS0zMi1ieXRlcyE=}
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus,metrics
+  tracing:
+    enabled: true
+  otlp:
+    tracing:
+      endpoint: ${OTEL_EXPORTER_ENDPOINT:http://localhost:4318/v1/traces}

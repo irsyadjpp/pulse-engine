@@ -5,6 +5,7 @@ import com.irsyad.pulse.product.application.command.product.CreateProductCommand
 import com.irsyad.pulse.product.application.command.product.UpdateProductCommand;
 import com.irsyad.pulse.product.application.query.product.SearchProductQuery;
 import com.irsyad.pulse.product.application.service.ProductApplicationService;
+import com.irsyad.pulse.product.application.service.ProductQueryService;
 import com.irsyad.pulse.product.domain.product.Product;
 import com.irsyad.pulse.product.domain.shared.ProductStatus;
 import io.swagger.v3.oas.annotations.Operation;
@@ -34,9 +35,12 @@ import java.util.UUID;
 public class ProductController {
 
     private final ProductApplicationService productApplicationService;
+    private final ProductQueryService productQueryService;
 
-    public ProductController(ProductApplicationService productApplicationService) {
+    public ProductController(ProductApplicationService productApplicationService,
+                             ProductQueryService productQueryService) {
         this.productApplicationService = productApplicationService;
+        this.productQueryService = productQueryService;
     }
 
     @PostMapping
@@ -76,7 +80,7 @@ public class ProductController {
     @GetMapping("/{id}")
     @Operation(summary = "Product Detail", description = "Returns a single Product by id.")
     public ResponseEntity<ApiResponse<ProductResponse>> detail(@PathVariable UUID id) {
-        Product product = this.productApplicationService.detail(id);
+        Product product = this.productQueryService.detail(id);
         return ResponseEntity.ok(ApiResponse.success(this.toResponse(product)));
     }
 
@@ -93,7 +97,7 @@ public class ProductController {
             @RequestParam(defaultValue = "20") int size) {
         SearchProductQuery query = new SearchProductQuery(
                 companyId, productCode, productName, category, status, effectiveDate, page, size);
-        List<ProductResponse> result = this.productApplicationService.search(query).stream()
+        List<ProductResponse> result = this.productQueryService.search(query).stream()
                 .map(this::toResponse)
                 .toList();
         return ResponseEntity.ok(ApiResponse.success(result));

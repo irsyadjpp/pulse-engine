@@ -695,6 +695,40 @@ Berikut area yang tidak dapat diturunkan dari BRD/FSD dan memerlukan keputusan l
 
 ---
 
+# 26. Compliance & Security Architecture
+
+Product Catalog Service harus memenuhi persyaratan compliance enterprise. Dokumen ini merujuk ke:
+
+* [Enterprise Standards & Compliance Framework](../../../docs/16. ENTERPRISE_STANDARDS.md)
+* [Compliance Implementation Matrix](../../../docs/18. COMPLIANCE_MATRIX.md)
+* [Compliance Reference Guide](COMPLIANCE_REFERENCE.md)
+
+### Key Compliance Requirements
+
+* **UU PDP No. 27/2022** - Data encryption, audit trail, retention policy
+* **POJK No. 13/2017** - IT governance, audit trail, business continuity
+* **ISO/IEC 27001:2022** - Access control, cryptography, operations security
+* **ISO/IEC 22301:2019** - Business continuity, RTO/RPO
+* **ISO 31000:2018** - Risk management
+
+### Security Architecture Principles
+
+* Defense in Depth
+* Least Privilege
+* Separation of Duties
+* Secure by Default
+* Zero Trust
+
+Lihat [TSD_09_SECURITY.md](TSD_09_SECURITY.md) untuk implementasi detail security controls.
+
+Lihat [TSD_03_DATABASE.md](TSD_03_DATABASE.md) untuk database security dan encryption.
+
+Lihat [TSD_11_LOGGING.md](TSD_11_LOGGING.md) untuk audit logging strategy.
+
+Lihat [TSD_12_OBSERVABILITY.md](TSD_12_OBSERVABILITY.md) untuk security monitoring.
+
+---
+
 # 26. Next Document
 
 Dokumen berikutnya:
